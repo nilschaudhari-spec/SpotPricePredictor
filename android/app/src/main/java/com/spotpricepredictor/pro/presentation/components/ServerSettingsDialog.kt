@@ -90,45 +90,55 @@ fun ServerSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    val presets = listOf(
+                val presetRows = listOf(
+                    listOf(
+                        "Render Cloud" to ServerSettingsManager.RENDER_CLOUD_URL,
+                        "USB (ADB)" to ServerSettingsManager.ADB_REVERSE_URL
+                    ),
+                    listOf(
                         "PC Wi-Fi" to ServerSettingsManager.DEFAULT_LAN_URL,
-                        "USB (ADB)" to ServerSettingsManager.ADB_REVERSE_URL,
                         "Emulator" to ServerSettingsManager.EMULATOR_URL
                     )
-                    presets.forEach { (label, url) ->
-                        val isSelected = inputUrl.trimEnd('/') == url.trimEnd('/')
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(
-                                    if (isSelected) ElectricCyan.copy(alpha = 0.2f) else SurfaceDark,
-                                    RoundedCornerShape(8.dp)
+                )
+
+                presetRows.forEachIndexed { index, rowItems ->
+                    if (index > 0) Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        rowItems.forEach { (label, url) ->
+                            val isSelected = inputUrl.trimEnd('/') == url.trimEnd('/')
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (isSelected) ElectricCyan.copy(alpha = 0.2f) else SurfaceDark,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) ElectricCyan else CardBorder,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        inputUrl = url
+                                        testStatus = null
+                                    }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isSelected) ElectricCyan else TextPrimary
                                 )
-                                .border(
-                                    1.dp,
-                                    if (isSelected) ElectricCyan else CardBorder,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable {
-                                    inputUrl = url
-                                    testStatus = null
-                                }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = label,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isSelected) ElectricCyan else TextPrimary
-                            )
+                            }
                         }
                     }
                 }
+
 
                 Spacer(modifier = Modifier.height(14.dp))
 
