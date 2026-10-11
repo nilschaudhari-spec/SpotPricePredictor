@@ -40,7 +40,7 @@ fun AddStockDialog(
 ) {
     var symbolInput by remember { mutableStateOf("") }
     val trimmedInput = symbolInput.trim()
-    val isMinQueryReached = trimmedInput.length >= 3
+    val isMinQueryReached = trimmedInput.isNotEmpty()
 
     val searchResults = remember(trimmedInput) {
         if (isMinQueryReached) {
@@ -49,6 +49,7 @@ fun AddStockDialog(
             emptyList()
         }
     }
+
 
     val popularSuggestions = listOf(
         "SBIN", "TATAMOTORS", "RELIANCE", "TCS", "INFY", "HDFCBANK",
@@ -265,13 +266,14 @@ fun AddStockDialog(
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                text = "Type at least 3 letters of company name or ticker to show autocomplete suggestions (e.g. 'TAT', 'REL', 'SBI', 'INF', 'HDF').",
+                                text = "Type any company name or ticker to see instant autocomplete suggestions (e.g. 'LT', 'TAT', 'REL', 'SBI', 'INF', 'SUZLON').",
                                 fontSize = 11.sp,
                                 color = TextSecondary,
                                 lineHeight = 15.sp
                             )
                         }
                     }
+
 
                     Spacer(modifier = Modifier.height(14.dp))
 

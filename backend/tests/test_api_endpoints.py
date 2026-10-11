@@ -46,10 +46,16 @@ def test_predict_endpoint_e2e():
     assert "model_breakdown" in data
     assert "disclaimer" in data
 
-def test_market_search_less_than_3_chars():
-    response = client.get("/api/v1/market/search?q=TA")
+def test_market_search_empty_returns_empty():
+    response = client.get("/api/v1/market/search?q=")
     assert response.status_code == 200
     assert response.json() == []
+
+def test_market_search_two_letters_lt():
+    response = client.get("/api/v1/market/search?q=LT")
+    assert response.status_code == 200
+    symbols = [s["symbol"] for s in response.json()]
+    assert "LT" in symbols
 
 def test_market_search_initial_3_letters_tata():
     response = client.get("/api/v1/market/search?q=TAT")
@@ -58,6 +64,7 @@ def test_market_search_initial_3_letters_tata():
     symbols = [s["symbol"] for s in data]
     assert "TATAMOTORS" in symbols
     assert "TCS" in symbols
+
 
 def test_market_search_reliance():
     response = client.get("/api/v1/market/search?q=REL")
@@ -86,5 +93,33 @@ def test_market_daily_news_endpoint():
     assert "why_it_matters" in first_item
     assert "likely_impact" in first_item
     assert "impact_sentiment" in first_item
+
+def test_market_ticker_endpoint():
+    response = client.get("/api/v1/market/ticker")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) >= 10
+    first_ticker = data[0]
+    assert "symbol" in first_ticker
+    assert "spot_price" in first_ticker
+    assert "change" in first_ticker
+    assert "change_percent" in first_ticker
+    assert "is_positive" in first_ticker
+
+def test_predict_custom_arbitrary_stock():
+    payload = {
+        "symbol": "SUZLON",
+        "exchange": "NSE",
+        "asset_type": "EQUITY",
+        "current_spot_price": 58.5,
+        "prediction_horizon": "15_MIN",
+        "trend_mode": "AUTO"
+    }
+    response = client.post("/api/v1/predict", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["symbol"] == "SUZLON"
+    assert data["predicted_spot_price"] > 0
+
 
 

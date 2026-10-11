@@ -83,9 +83,18 @@ class MarketDataFetcher:
             except Exception:
                 continue
 
-        default_info = cls.TICKER_DEFAULTS.get(sym, {"spot": 2000.0, "step": 20, "iv": 18.0, "lot": 100})
+        default_info = cls.TICKER_DEFAULTS.get(sym)
+        if not default_info:
+            try:
+                from app.api.endpoints.market_data import CATALOG_MAP
+                cat_item = CATALOG_MAP.get(sym)
+                spot_val = float(cat_item["default_spot"]) if cat_item else 1000.0
+            except Exception:
+                spot_val = 1000.0
+            default_info = {"spot": spot_val, "step": 20, "iv": 18.0, "lot": 100}
+
         if not live_price:
-            live_price = default_info.get("spot", 2000.0)
+            live_price = default_info.get("spot", 1000.0)
             prev_close = live_price
 
         change = round(live_price - prev_close, 2)
@@ -106,8 +115,10 @@ class MarketDataFetcher:
             step = 5
         elif live_price > 80:
             step = 2.5
-        else:
+        elif live_price > 25:
             step = 1.0
+        else:
+            step = 0.5
 
         quote_data = {
             "symbol": sym,
@@ -115,7 +126,7 @@ class MarketDataFetcher:
             "previous_close": prev_close,
             "change": change,
             "change_percent": pct_change,
-            "step": default_info.get("step", step),
+            "step": default_info.get("step") if sym in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"] else step,
             "iv": default_info.get("iv", 18.0),
             "lot_size": default_info.get("lot", 50),
             "is_realtime": True

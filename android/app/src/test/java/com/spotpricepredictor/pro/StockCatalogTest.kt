@@ -9,11 +9,25 @@ import org.junit.Test
 class StockCatalogTest {
 
     @Test
-    fun `query shorter than 3 characters returns empty list`() {
+    fun `empty query returns empty list`() {
         assertTrue(StockCatalog.search("").isEmpty())
-        assertTrue(StockCatalog.search("T").isEmpty())
-        assertTrue(StockCatalog.search("TA").isEmpty())
-        assertTrue(StockCatalog.search("  t ").isEmpty())
+        assertTrue(StockCatalog.search("   ").isEmpty())
+    }
+
+    @Test
+    fun `searching 2 letters LT returns Larsen and Toubro`() {
+        val results = StockCatalog.search("LT")
+        assertFalse(results.isEmpty())
+        val symbols = results.map { it.symbol }
+        assertTrue(symbols.contains("LT"))
+    }
+
+    @Test
+    fun `searching 1 letter T returns Tata stocks`() {
+        val results = StockCatalog.search("T")
+        assertFalse(results.isEmpty())
+        val symbols = results.map { it.symbol }
+        assertTrue(symbols.contains("TATAMOTORS") || symbols.contains("TCS"))
     }
 
     @Test
@@ -64,15 +78,9 @@ class StockCatalogTest {
     }
 
     @Test
-    fun `typing BAN returns Bank Nifty and bank stocks`() {
-        val results = StockCatalog.search("BAN")
-        val symbols = results.map { it.symbol }
-        assertTrue(symbols.contains("BANKNIFTY") || symbols.contains("BANKBARODA") || symbols.contains("HDFCBANK"))
-    }
-
-    @Test
-    fun `typing non-existent ticker returns empty list`() {
-        val results = StockCatalog.search("ZZZ999")
-        assertTrue(results.isEmpty())
+    fun `searching any custom ticker outside catalog provides selectable dynamic stock item`() {
+        val results = StockCatalog.search("CUSTOMCO")
+        assertFalse(results.isEmpty())
+        assertTrue(results.any { it.symbol == "CUSTOMCO" })
     }
 }

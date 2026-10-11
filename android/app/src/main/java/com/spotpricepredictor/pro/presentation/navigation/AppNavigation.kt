@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -13,6 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.spotpricepredictor.pro.data.preferences.TickerSettingsManager
+import com.spotpricepredictor.pro.presentation.components.MarketTickerTape
 import com.spotpricepredictor.pro.presentation.screens.history.HistoryScreen
 import com.spotpricepredictor.pro.presentation.screens.history.HistoryViewModel
 import com.spotpricepredictor.pro.presentation.screens.news.NewsScreen
@@ -34,7 +38,24 @@ fun AppNavigation(
         Screen.History
     )
 
+    val context = LocalContext.current
+    val tickerSettingsManager = remember { TickerSettingsManager(context) }
+
     Scaffold(
+        topBar = {
+            MarketTickerTape(
+                tickerSettingsManager = tickerSettingsManager,
+                onSelectSymbol = { symbol ->
+                    navController.navigate(Screen.Predictor.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            )
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = DeepObsidian,

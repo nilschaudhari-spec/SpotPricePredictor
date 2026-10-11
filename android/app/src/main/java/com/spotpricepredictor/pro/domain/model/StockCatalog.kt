@@ -9,6 +9,13 @@ object StockCatalog {
         StockItem("FINNIFTY", "Nifty Financial Services Index", "Financial Index"),
         StockItem("MIDCPNIFTY", "Nifty Midcap Select Index", "Midcap Index"),
         StockItem("SENSEX", "BSE Sensex Benchmark Index", "Benchmark Index", "BSE"),
+        StockItem("BANKEX", "BSE Bankex Index", "Banking Index", "BSE"),
+        StockItem("NIFTYIT", "Nifty IT Sector Index", "IT Index"),
+        StockItem("NIFTYAUTO", "Nifty Auto Sector Index", "Auto Index"),
+        StockItem("NIFTYPHARMA", "Nifty Pharma Sector Index", "Pharma Index"),
+        StockItem("NIFTYFMCG", "Nifty FMCG Sector Index", "FMCG Index"),
+        StockItem("NIFTYMETAL", "Nifty Metal Sector Index", "Metal Index"),
+        StockItem("NIFTYENERGY", "Nifty Energy Sector Index", "Energy Index"),
 
         // Tata Group
         StockItem("TATAMOTORS", "Tata Motors Limited", "Automobile"),
@@ -19,11 +26,13 @@ object StockCatalog {
         StockItem("TATAPOWER", "Tata Power Company Limited", "Power & Energy"),
         StockItem("TATACOMM", "Tata Communications Limited", "Telecom"),
         StockItem("TATAELXSI", "Tata Elxsi Limited", "IT & Design"),
+        StockItem("TATATECH", "Tata Technologies Limited", "Engineering & IT"),
+        StockItem("TATAINVEST", "Tata Investment Corporation", "Financial Holding"),
         StockItem("TRENT", "Trent Limited (Westside/Zudio Tata Retail)", "Retail"),
         StockItem("VOLTAS", "Voltas Limited (Tata Group)", "Consumer Durables"),
         StockItem("TITAN", "Titan Company Limited (Tanishq/Fastrack)", "Consumer Lifestyle"),
 
-        // Banking
+        // Banking (Private & PSU)
         StockItem("HDFCBANK", "HDFC Bank Limited", "Private Banking"),
         StockItem("ICICIBANK", "ICICI Bank Limited", "Private Banking"),
         StockItem("SBIN", "State Bank of India", "Public Banking"),
@@ -38,12 +47,25 @@ object StockCatalog {
         StockItem("IDFCFIRSTB", "IDFC First Bank Limited", "Private Banking"),
         StockItem("AUBANK", "AU Small Finance Bank Limited", "Banking"),
         StockItem("BANDHANBNK", "Bandhan Bank Limited", "Private Banking"),
+        StockItem("RBLBANK", "RBL Bank Limited", "Private Banking"),
+        StockItem("INDIANB", "Indian Bank", "Public Banking"),
+        StockItem("MAHABANK", "Bank of Maharashtra", "Public Banking"),
+        StockItem("CENTRALBK", "Central Bank of India", "Public Banking"),
+        StockItem("UCOBANK", "UCO Bank", "Public Banking"),
+        StockItem("IOB", "Indian Overseas Bank", "Public Banking"),
+        StockItem("BANKINDIA", "Bank of India", "Public Banking"),
+        StockItem("YESBANK", "Yes Bank Limited", "Private Banking"),
+        StockItem("KARURVYSYA", "Karur Vysya Bank Limited", "Private Banking"),
+        StockItem("CUB", "City Union Bank Limited", "Private Banking"),
 
-        // Financial Services & Insurance
+        // Financial Services, NBFC, Insurance & Exchanges
         StockItem("BAJFINANCE", "Bajaj Finance Limited", "NBFC / Financial Services"),
         StockItem("BAJAJFINSV", "Bajaj Finserv Limited", "Financial Services"),
         StockItem("CHOLAFIN", "Cholamandalam Investment and Finance", "NBFC"),
+        StockItem("SHRIRAMFIN", "Shriram Finance Limited", "NBFC"),
         StockItem("MUTHOOTFIN", "Muthoot Finance Limited", "Gold Loans / NBFC"),
+        StockItem("MANAPPURAM", "Manappuram Finance Limited", "Gold Loans / NBFC"),
+        StockItem("POONAWALLA", "Poonawalla Fincorp Limited", "NBFC"),
         StockItem("JIOFIN", "Jio Financial Services Limited", "Financial Services"),
         StockItem("HDFCLIFE", "HDFC Life Insurance Company Limited", "Life Insurance"),
         StockItem("SBILIFE", "SBI Life Insurance Company Limited", "Life Insurance"),
@@ -51,9 +73,23 @@ object StockCatalog {
         StockItem("ICICIGI", "ICICI Lombard General Insurance", "General Insurance"),
         StockItem("SBICARD", "SBI Cards and Payment Services Limited", "Credit Cards"),
         StockItem("HDFCAMC", "HDFC Asset Management Company Limited", "Asset Management"),
+        StockItem("NAM-INDIA", "Nippon Life India Asset Management", "Asset Management"),
+        StockItem("UTIAMC", "UTI Asset Management Company Limited", "Asset Management"),
         StockItem("LICI", "Life Insurance Corporation of India (LIC)", "Life Insurance"),
+        StockItem("BSE", "BSE Limited (Exchange)", "Exchanges"),
+        StockItem("CDSL", "Central Depository Services (India) Limited", "Depositories"),
+        StockItem("MCX", "Multi Commodity Exchange of India", "Exchanges"),
+        StockItem("CAMS", "Computer Age Management Services", "Fintech / Registrar"),
+        StockItem("ANGELONE", "Angel One Limited", "Broking & Fintech"),
+        StockItem("MOTILALOFS", "Motilal Oswal Financial Services", "Financial Services"),
+        StockItem("IEX", "Indian Energy Exchange Limited", "Energy Exchange"),
+        StockItem("CRISIL", "CRISIL Limited (Credit Rating)", "Rating Agencies"),
+        StockItem("PFC", "Power Finance Corporation Limited", "NBFC / Power Infra"),
+        StockItem("RECLTD", "REC Limited", "NBFC / Infrastructure"),
+        StockItem("HUDCO", "Housing & Urban Development Corp", "Housing & Infra NBFC"),
+        StockItem("IRFC", "Indian Railway Finance Corporation", "Railway NBFC"),
 
-        // IT & Software
+        // IT, Software & Internet
         StockItem("INFY", "Infosys Limited", "IT Services"),
         StockItem("WIPRO", "Wipro Limited", "IT Services"),
         StockItem("HCLTECH", "HCL Technologies Limited", "IT Services"),
@@ -62,153 +98,199 @@ object StockCatalog {
         StockItem("PERSISTENT", "Persistent Systems Limited", "IT Services"),
         StockItem("COFORGE", "Coforge Limited", "IT Services"),
         StockItem("MPHASIS", "Mphasis Limited", "IT Services"),
-        StockItem("LTTS", "L&T Technology Services Limited", "Engineering R&D"),
-        StockItem("OFSS", "Oracle Financial Services Software", "IT Services"),
-        StockItem("NAUKRI", "Info Edge (India) Limited (Naukri.com)", "Internet & Tech"),
-        StockItem("ZOMATO", "Zomato Limited (Blinkit)", "Food Delivery & Tech"),
-        StockItem("PAYTM", "One97 Communications Limited (Paytm)", "Fintech"),
-        StockItem("NYKAA", "FSN E-Commerce Ventures (Nykaa)", "E-Commerce"),
-        StockItem("POLICYBZR", "PB Fintech Limited (PolicyBazaar)", "Fintech"),
+        StockItem("LTTS", "L&T Technology Services Limited", "IT & Engineering"),
+        StockItem("KPITTECH", "KPIT Technologies Limited", "Automotive Software"),
+        StockItem("CYIENT", "Cyient Limited", "Engineering IT"),
+        StockItem("BSOFT", "Birlasoft Limited", "IT Services"),
+        StockItem("ZOMATO", "Zomato Limited", "Internet & Food Tech"),
+        StockItem("PAYTM", "One97 Communications (Paytm)", "Fintech"),
+        StockItem("NAUKRI", "Info Edge (India) Limited (Naukri.com)", "Internet / Recruitment"),
+        StockItem("PBFINTECH", "PB Fintech (Policybazaar / Paisabazaar)", "Fintech / Insurtech"),
+        StockItem("MAPMYINDIA", "CE Info Systems (MapMyIndia)", "Geo-Tech & SaaS"),
+        StockItem("POLICYBZR", "Policybazaar (PB Fintech)", "Fintech"),
+        StockItem("DELHIVERY", "Delhivery Limited", "Logistics Tech"),
+        StockItem("NYKAA", "FSN E-Commerce Ventures (Nykaa)", "E-Commerce / Beauty"),
+        StockItem("SWIGGY", "Swiggy Limited", "Food Delivery & Quick Commerce"),
+        StockItem("HAPPSTMNDS", "Happiest Minds Technologies", "Digital IT Solutions"),
+        StockItem("INTELLECT", "Intellect Design Arena Limited", "Banking Tech / SaaS"),
+        StockItem("KFINTECH", "KFin Technologies Limited", "Fintech Registrar"),
 
-        // Oil, Gas & Energy
-        StockItem("RELIANCE", "Reliance Industries Limited", "Conglomerate & Energy"),
-        StockItem("ONGC", "Oil and Natural Gas Corporation Limited", "Oil & Gas Exploration"),
-        StockItem("BPCL", "Bharat Petroleum Corporation Limited", "Oil & Gas Refining"),
-        StockItem("IOC", "Indian Oil Corporation Limited", "Oil & Gas Refining"),
-        StockItem("HPCL", "Hindustan Petroleum Corporation Limited", "Oil & Gas Refining"),
-        StockItem("GAIL", "GAIL (India) Limited", "Natural Gas Transmission"),
-        StockItem("PETRONET", "Petronet LNG Limited", "Natural Gas LNG"),
-        StockItem("IGL", "Indraprastha Gas Limited", "City Gas Distribution"),
-        StockItem("MGL", "Mahanagar Gas Limited", "City Gas Distribution"),
-        StockItem("COALINDIA", "Coal India Limited", "Mining & Energy"),
+        // Oil, Gas, Energy & Utilities
+        StockItem("RELIANCE", "Reliance Industries Limited", "Conglomerate / Energy"),
+        StockItem("ONGC", "Oil and Natural Gas Corporation", "Oil & Gas Exploration"),
+        StockItem("BPCL", "Bharat Petroleum Corporation Limited", "Oil Refining & Marketing"),
+        StockItem("IOC", "Indian Oil Corporation Limited", "Oil Refining & Marketing"),
+        StockItem("HPCL", "Hindustan Petroleum Corporation Limited", "Oil Refining & Marketing"),
+        StockItem("COALINDIA", "Coal India Limited", "Coal & Mining"),
         StockItem("NTPC", "NTPC Limited", "Power Generation"),
         StockItem("POWERGRID", "Power Grid Corporation of India", "Power Transmission"),
-        StockItem("ADANIENT", "Adani Enterprises Limited", "Conglomerate & Mining"),
-        StockItem("ADANIPORTS", "Adani Ports and Special Economic Zone", "Ports & Logistics"),
-        StockItem("ADANIPOWER", "Adani Power Limited", "Power Generation"),
-        StockItem("ADANIGREEN", "Adani Green Energy Limited", "Renewable Energy"),
-        StockItem("SUZLON", "Suzlon Energy Limited", "Wind Power / Renewable"),
-        StockItem("NHPC", "NHPC Limited", "Hydro Power"),
+        StockItem("GAIL", "GAIL (India) Limited", "Natural Gas Transmission"),
+        StockItem("PETRONET", "Petronet LNG Limited", "Liquefied Natural Gas"),
+        StockItem("IGL", "Indraprastha Gas Limited", "City Gas Distribution"),
+        StockItem("MGL", "Mahanagar Gas Limited", "City Gas Distribution"),
+        StockItem("GUJGASLTD", "Gujarat Gas Limited", "City Gas Distribution"),
+        StockItem("OIL", "Oil India Limited", "Oil Exploration"),
+        StockItem("NHPC", "NHPC Limited", "Hydroelectric Power"),
+        StockItem("SJVN", "SJVN Limited", "Power Generation"),
+        StockItem("IREDA", "Indian Renewable Energy Dev Agency", "Green Energy Financing"),
+        StockItem("SUZLON", "Suzlon Energy Limited", "Wind Energy Equipment"),
+        StockItem("JSWENERGY", "JSW Energy Limited", "Power Generation"),
+        StockItem("TORNTPOWER", "Torrent Power Limited", "Power Generation & Distribution"),
 
-        // Automobile & Auto Components
-        StockItem("MARUTI", "Maruti Suzuki India Limited", "Passenger Vehicles"),
-        StockItem("M&M", "Mahindra & Mahindra Limited", "Automobile & Tractors"),
+        // Adani Group
+        StockItem("ADANIENT", "Adani Enterprises Limited", "Conglomerate"),
+        StockItem("ADANIPORTS", "Adani Ports and Special Economic Zone", "Ports & Logistics"),
+        StockItem("ADANIPOWER", "Adani Power Limited", "Thermal Power Generation"),
+        StockItem("ADANIGREEN", "Adani Green Energy Limited", "Renewable Solar & Wind"),
+        StockItem("ADANIENSOL", "Adani Energy Solutions Limited", "Power Transmission"),
+        StockItem("ATGL", "Adani Total Gas Limited", "City Gas Distribution"),
+        StockItem("AWL", "Adani Wilmar Limited (Fortune)", "Edible Oils & FMCG"),
+
+        // Automobile & Components
+        StockItem("MARUTI", "Maruti Suzuki India Limited", "Automobile (Passenger Cars)"),
+        StockItem("M&M", "Mahindra & Mahindra Limited", "Automobile (SUVs & Tractors)"),
         StockItem("BAJAJ-AUTO", "Bajaj Auto Limited", "Two & Three Wheelers"),
         StockItem("HEROMOTOCO", "Hero MotoCorp Limited", "Two Wheelers"),
-        StockItem("EICHERMOT", "Eicher Motors Limited (Royal Enfield)", "Automobile"),
+        StockItem("EICHERMOT", "Eicher Motors Limited (Royal Enfield)", "Automobile / Motorcycles"),
         StockItem("TVSMOTOR", "TVS Motor Company Limited", "Two Wheelers"),
-        StockItem("ASHOKLEY", "Ashok Leyland Limited", "Commercial Vehicles"),
-        StockItem("ESCORTS", "Escorts Kubota Limited", "Agricultural Machinery"),
         StockItem("MOTHERSON", "Samvardhana Motherson International", "Auto Components"),
-        StockItem("BOSCHLTD", "Bosch Limited", "Auto Components & Tech"),
-        StockItem("BALKRISIND", "Balkrishna Industries Limited (BKT)", "Tyres & Off-Highway"),
-        StockItem("MRF", "MRF Limited", "Tyres"),
+        StockItem("BHARATFORG", "Bharat Forge Limited", "Auto Forgings & Defense"),
+        StockItem("BOSCHLTD", "Bosch Limited", "Auto Engineering"),
+        StockItem("MRF", "MRF Limited", "Tyres & Rubber"),
         StockItem("APOLLOTYRE", "Apollo Tyres Limited", "Tyres"),
-        StockItem("BHARATFORG", "Bharat Forge Limited", "Auto Forging & Defense"),
+        StockItem("BALKRISIND", "Balkrishna Industries Limited", "Off-Highway Tyres"),
+        StockItem("EXIDEIND", "Exide Industries Limited", "Storage Batteries"),
+        StockItem("AMARAJABAT", "Amara Raja Energy & Mobility", "Batteries & EV Tech"),
+        StockItem("SONACOMS", "Sona BLW Precision Forgings", "EV Driveline Components"),
+        StockItem("TIINDIA", "Tube Investments of India Limited", "Auto & Engineering"),
+        StockItem("ESCORTS", "Escorts Kubota Limited", "Tractors & Agri Machinery"),
+        StockItem("ASHOKLEY", "Ashok Leyland Limited", "Commercial Vehicles"),
 
-        // Pharma & Healthcare
-        StockItem("SUNPHARMA", "Sun Pharmaceutical Industries Limited", "Pharmaceuticals"),
-        StockItem("CIPLA", "Cipla Limited", "Pharmaceuticals"),
-        StockItem("DRREDDY", "Dr. Reddy's Laboratories Limited", "Pharmaceuticals"),
-        StockItem("DIVISLAB", "Divi's Laboratories Limited", "Pharmaceuticals & API"),
-        StockItem("APOLLOHOSP", "Apollo Hospitals Enterprise Limited", "Healthcare & Hospitals"),
-        StockItem("LUPIN", "Lupin Limited", "Pharmaceuticals"),
-        StockItem("AUROPHARMA", "Aurobindo Pharma Limited", "Pharmaceuticals"),
-        StockItem("BIOCON", "Biocon Limited", "Biotechnology & Biosimilars"),
-        StockItem("TORNTPHARM", "Torrent Pharmaceuticals Limited", "Pharmaceuticals"),
-        StockItem("ALKEM", "Alkem Laboratories Limited", "Pharmaceuticals"),
-        StockItem("MANKIND", "Mankind Pharma Limited", "Pharmaceuticals"),
-        StockItem("MAXHEALTH", "Max Healthcare Institute Limited", "Hospitals"),
-        StockItem("FORTIS", "Fortis Healthcare Limited", "Hospitals"),
-        StockItem("GLENMARK", "Glenmark Pharmaceuticals Limited", "Pharmaceuticals"),
-
-        // FMCG & Consumer Goods
-        StockItem("HINDUNILVR", "Hindustan Unilever Limited", "FMCG / Home & Personal"),
-        StockItem("ITC", "ITC Limited", "FMCG & Diversified"),
-        StockItem("NESTLEIND", "Nestle India Limited", "FMCG / Food & Beverage"),
-        StockItem("BRITANNIA", "Britannia Industries Limited", "FMCG / Bakery & Dairy"),
-        StockItem("GODREJCP", "Godrej Consumer Products Limited", "FMCG / Household"),
-        StockItem("DABUR", "Dabur India Limited", "FMCG / Ayurveda"),
-        StockItem("MARICO", "Marico Limited (Parachute/Saffola)", "FMCG / Consumer Care"),
-        StockItem("COLPAL", "Colgate-Palmolive (India) Limited", "FMCG / Oral Care"),
-        StockItem("VBL", "Varun Beverages Limited (PepsiCo)", "Beverages"),
-        StockItem("UBL", "United Breweries Limited (Kingfisher)", "Beverages"),
-        StockItem("UNITDSPR", "United Spirits Limited (Diageo)", "Beverages"),
-        StockItem("PAGEIND", "Page Industries Limited (Jockey)", "Apparel & Textiles"),
-        StockItem("BATAINDIA", "Bata India Limited", "Footwear"),
-
-        // Metals & Mining
-        StockItem("JSWSTEEL", "JSW Steel Limited", "Iron & Steel"),
-        StockItem("HINDALCO", "Hindalco Industries Limited (Novelis)", "Aluminium & Copper"),
+        // Metals, Mining & Commodities
+        StockItem("JINDALSTEL", "Jindal Steel & Power Limited", "Steel & Mining"),
+        StockItem("JSWSTEEL", "JSW Steel Limited", "Steel Manufacturing"),
+        StockItem("HINDALCO", "Hindalco Industries Limited", "Aluminium & Copper"),
         StockItem("VEDL", "Vedanta Limited", "Diversified Metals & Mining"),
-        StockItem("JINDALSTEL", "Jindal Steel & Power Limited", "Iron & Steel"),
         StockItem("NMDC", "NMDC Limited", "Iron Ore Mining"),
         StockItem("SAIL", "Steel Authority of India Limited", "Steel Manufacturing"),
-        StockItem("NATIONALUM", "National Aluminium Company (NALCO)", "Aluminium"),
+        StockItem("NATIONALUM", "National Aluminium Company (NALCO)", "Aluminium Mining"),
+        StockItem("HINDZINC", "Hindustan Zinc Limited", "Zinc & Silver Mining"),
+        StockItem("APLAPOLLO", "APL Apollo Tubes Limited", "Structural Steel Tubes"),
+        StockItem("HINDCOPPER", "Hindustan Copper Limited", "Copper Mining"),
 
-        // Infrastructure, Cement & Capital Goods
-        StockItem("LT", "Larsen & Toubro Limited", "Engineering & Infra"),
-        StockItem("ULTRACEMCO", "UltraTech Cement Limited", "Cement"),
-        StockItem("GRASIM", "Grasim Industries Limited", "Cement & VSF"),
+        // Pharma, Healthcare & Biotech
+        StockItem("SUNPHARMA", "Sun Pharmaceutical Industries", "Pharmaceuticals"),
+        StockItem("CIPLA", "Cipla Limited", "Pharmaceuticals"),
+        StockItem("DRREDDY", "Dr. Reddy's Laboratories Limited", "Pharmaceuticals"),
+        StockItem("DIVISLAB", "Divi's Laboratories Limited", "Active Pharmaceutical Ingredients"),
+        StockItem("APOLLOHOSP", "Apollo Hospitals Enterprise", "Healthcare & Hospitals"),
+        StockItem("LUPIN", "Lupin Limited", "Pharmaceuticals"),
+        StockItem("AUROPHARMA", "Aurobindo Pharma Limited", "Pharmaceuticals"),
+        StockItem("TORNTPHARM", "Torrent Pharmaceuticals Limited", "Pharmaceuticals"),
+        StockItem("ZYDUSLIFE", "Zydus Lifesciences Limited", "Pharmaceuticals"),
+        StockItem("ALKEM", "Alkem Laboratories Limited", "Pharmaceuticals"),
+        StockItem("BIOCON", "Biocon Limited", "Biopharmaceuticals"),
+        StockItem("MANKIND", "Mankind Pharma Limited", "Consumer Healthcare"),
+        StockItem("GLENMARK", "Glenmark Pharmaceuticals Limited", "Pharmaceuticals"),
+        StockItem("IPCALAB", "IPCA Laboratories Limited", "Pharmaceuticals"),
+        StockItem("LAURUSLABS", "Laurus Labs Limited", "Active Pharmaceutical Ingredients"),
+        StockItem("GRANULES", "Granules India Limited", "Pharmaceutical Formulations"),
+        StockItem("FORTIS", "Fortis Healthcare Limited", "Hospitals & Diagnostics"),
+        StockItem("MAXHEALTH", "Max Healthcare Institute Limited", "Hospitals"),
+
+        // FMCG, Retail & Consumption
+        StockItem("HINDUNILVR", "Hindustan Unilever Limited", "FMCG"),
+        StockItem("ITC", "ITC Limited", "FMCG / Diversified"),
+        StockItem("NESTLEIND", "Nestle India Limited", "Food & Beverages"),
+        StockItem("BRITANNIA", "Britannia Industries Limited", "Bakery & FMCG"),
+        StockItem("DABUR", "Dabur India Limited", "Ayurvedic & FMCG"),
+        StockItem("MARICO", "Marico Limited (Parachute/Saffola)", "FMCG"),
+        StockItem("GODREJCP", "Godrej Consumer Products Limited", "Personal Care & FMCG"),
+        StockItem("COLPAL", "Colgate-Palmolive (India) Limited", "Oral Care / FMCG"),
+        StockItem("VBL", "Varun Beverages Limited (PepsiCo)", "Beverages"),
+        StockItem("DEVYANI", "Devyani International (KFC/Pizza Hut)", "QSR & Quick Dining"),
+        StockItem("JUBLFOOD", "Jubilant FoodWorks (Domino's Pizza)", "QSR & Food Service"),
+        StockItem("DMART", "Avenue Supermarts Limited (DMart)", "Retail Supermarkets"),
+        StockItem("RADICO", "Radico Khaitan Limited", "Beverages / Alcohol"),
+        StockItem("UNITEDSPR", "United Spirits Limited (Diageo India)", "Beverages / Alcohol"),
+
+        // Infrastructure, Capital Goods, Defence & Engineering
+        StockItem("LT", "Larsen & Toubro Limited", "Engineering, Construction & Infra"),
+        StockItem("BEL", "Bharat Electronics Limited", "Defense Electronics & Radar"),
+        StockItem("HAL", "Hindustan Aeronautics Limited", "Defense Aerospace & Aircraft"),
+        StockItem("BHEL", "Bharat Heavy Electricals Limited", "Power Equipment & Turbines"),
+        StockItem("ABB", "ABB India Limited", "Electrification & Industrial Automation"),
+        StockItem("SIEMENS", "Siemens Limited", "Industrial Engineering & Power"),
+        StockItem("CUMMINSIND", "Cummins India Limited", "Diesel & Natural Gas Engines"),
+        StockItem("THERMAX", "Thermax Limited", "Clean Air & Energy Solutions"),
+        StockItem("CGPOWER", "CG Power and Industrial Solutions", "Electrical Equipment & Motors"),
+        StockItem("POLYCAB", "Polycab India Limited", "Wires, Cables & Fasteners"),
+        StockItem("KEI", "KEI Industries Limited", "High Voltage Power Cables"),
+        StockItem("HAVELLS", "Havells India Limited", "Consumer Electricals & Appliances"),
+        StockItem("DIXON", "Dixon Technologies (India) Limited", "Electronic Manufacturing (EMS)"),
+        StockItem("KAYNES", "Kaynes Technology India Limited", "Integrated Electronics (EMS)"),
+        StockItem("ASTRAL", "Astral Limited", "Plumbing & Drainage Pipes"),
+        StockItem("SUPREMEIND", "Supreme Industries Limited", "Plastic Products & Piping"),
+        StockItem("MAZDOCK", "Mazagon Dock Shipbuilders Limited", "Defense Warships & Submarines"),
+        StockItem("COCHINSHIP", "Cochin Shipyard Limited", "Shipbuilding & Aircraft Carriers"),
+        StockItem("GRSE", "Garden Reach Shipbuilders & Engineers", "Defense Naval Vessels"),
+        StockItem("BDL", "Bharat Dynamics Limited", "Missile Systems & Ammunition"),
+        StockItem("RVNL", "Rail Vikas Nigam Limited", "Rail Infrastructure Projects"),
+        StockItem("IRCTC", "Indian Railway Catering and Tourism Corp", "Railways Ticketing & Tourism"),
+        StockItem("RAILTEL", "RailTel Corporation of India Limited", "Telecom & Optical Fiber Network"),
+        StockItem("RITES", "RITES Limited", "Transport Infrastructure Consultancy"),
+        StockItem("NBCC", "NBCC (India) Limited", "Civil Engineering Construction"),
+        StockItem("GMRINFRA", "GMR Airports Infrastructure Limited", "Airports & Transportation"),
+
+        // Cement & Building Materials
+        StockItem("ULTRACEMCO", "UltraTech Cement Limited", "Cement & Concrete"),
+        StockItem("GRASIM", "Grasim Industries Limited", "Cement, Chemicals & Textiles"),
         StockItem("AMBUJACEM", "Ambuja Cements Limited", "Cement"),
-        StockItem("ACC", "ACC Limited", "Cement"),
+        StockItem("ACC", "ACC Limited", "Cement & Ready Mix Concrete"),
         StockItem("SHREECEM", "Shree Cement Limited", "Cement"),
         StockItem("DALBHARAT", "Dalmia Bharat Limited", "Cement"),
-        StockItem("SIEMENS", "Siemens Limited", "Capital Goods & Automation"),
-        StockItem("ABB", "ABB India Limited", "Power & Automation"),
-        StockItem("HAVELLS", "Havells India Limited", "Consumer Electricals"),
-        StockItem("POLYCAB", "Polycab India Limited", "Wires & Cables"),
-        StockItem("CUMMINSIND", "Cummins India Limited", "Engines & Power Gen"),
-        StockItem("BHEL", "Bharat Heavy Electricals Limited", "Power Equipment"),
-        StockItem("BEL", "Bharat Electronics Limited", "Defense Electronics"),
-        StockItem("HAL", "Hindustan Aeronautics Limited", "Defense Aerospace"),
-        StockItem("MAZDOCK", "Mazagon Dock Shipbuilders Limited", "Defense Shipbuilding"),
-        StockItem("COCHINSHIP", "Cochin Shipyard Limited", "Shipbuilding & Marine"),
-        StockItem("BDL", "Bharat Dynamics Limited", "Defense Missiles"),
+        StockItem("JKCEMENT", "JK Cement Limited", "Grey & White Cement"),
+        StockItem("RAMCOCEM", "The Ramco Cements Limited", "Cement"),
 
-        // Real Estate & Logistics
-        StockItem("DLF", "DLF Limited", "Real Estate"),
-        StockItem("GODREJPROP", "Godrej Properties Limited", "Real Estate"),
-        StockItem("OBEROIRLTY", "Oberoi Realty Limited", "Real Estate"),
-        StockItem("PHOENIXLTD", "The Phoenix Mills Limited", "Real Estate Retail Malls"),
-        StockItem("CONCOR", "Container Corporation of India", "Logistics"),
-        StockItem("DELHIVERY", "Delhivery Limited", "Express Logistics"),
-        StockItem("GMRINFRA", "GMR Airports Infrastructure Limited", "Airports & Infra"),
-
-        // Railways & PSU Finance
-        StockItem("IRCTC", "Indian Railway Catering & Tourism Corp", "Railways & Tourism"),
-        StockItem("IRFC", "Indian Railway Finance Corporation", "Railways Financing"),
-        StockItem("RVNL", "Rail Vikas Nigam Limited", "Railway Infrastructure"),
-        StockItem("RECLTD", "REC Limited", "Power Infrastructure Finance"),
-        StockItem("PFC", "Power Finance Corporation Limited", "Power Financing"),
-        StockItem("IREDA", "Indian Renewable Energy Dev Agency", "Green Energy Finance"),
-
-        // Telecom & Media
-        StockItem("BHARTIARTL", "Bharti Airtel Limited", "Telecommunications"),
-        StockItem("IDEA", "Vodafone Idea Limited", "Telecommunications"),
-        StockItem("PVRINOX", "PVR INOX Limited", "Multiplex & Cinema"),
-        StockItem("SUNTV", "Sun TV Network Limited", "Broadcasting & Media"),
-        StockItem("ZEEL", "Zee Entertainment Enterprises", "Media & Entertainment"),
-
-        // Chemicals & Paints
-        StockItem("ASIANPAINT", "Asian Paints Limited", "Paints & Coatings"),
-        StockItem("BERGEPAINT", "Berger Paints India Limited", "Paints"),
+        // Chemicals, Fertilizers & Paints
         StockItem("PIDILITIND", "Pidilite Industries Limited (Fevicol)", "Adhesives & Sealants"),
-        StockItem("SRF", "SRF Limited", "Specialty Chemicals"),
-        StockItem("DEEPAKNTR", "Deepak Nitrite Limited", "Chemical Intermediates"),
+        StockItem("SRF", "SRF Limited", "Specialty Chemicals & Packaging"),
+        StockItem("DEEPAKNTR", "Deepak Nitrite Limited", "Chemical Intermediates & Phenolics"),
         StockItem("AARTIIND", "Aarti Industries Limited", "Specialty Chemicals"),
-        StockItem("PIIND", "PI Industries Limited", "Agrochemicals"),
-        StockItem("UPL", "UPL Limited", "Agrochemicals")
+        StockItem("NAVINFLUOR", "Navin Fluorine International Limited", "Specialty Fluorochemicals"),
+        StockItem("ATUL", "Atul Limited", "Chemicals & Polymers"),
+        StockItem("PIIND", "PI Industries Limited", "Agrochemicals & Fine Chemicals"),
+        StockItem("UPL", "UPL Limited", "Agrochemicals & Crop Protection"),
+        StockItem("COROMANDEL", "Coromandel International Limited", "Fertilizers & Nutrients"),
+        StockItem("ASIANPAINT", "Asian Paints Limited", "Paints, Coatings & Home Decor"),
+        StockItem("BERGEPAINT", "Berger Paints India Limited", "Paints & Wall Coatings"),
+
+        // Telecom, Media & Entertainment
+        StockItem("BHARTIARTL", "Bharti Airtel Limited", "Telecommunications"),
+        StockItem("IDEA", "Vodafone Idea Limited (Vi)", "Telecommunications"),
+        StockItem("INDUSTOWER", "Indus Towers Limited", "Passive Telecom Infrastructure"),
+        StockItem("ZEEL", "Zee Entertainment Enterprises", "Media & Entertainment"),
+        StockItem("SUNTV", "Sun TV Network Limited", "Broadcasting & Television"),
+        StockItem("PVRINOX", "PVR INOX Limited", "Multiplex Cinema Exhibition"),
+
+        // Real Estate
+        StockItem("DLF", "DLF Limited", "Real Estate Development"),
+        StockItem("GODREJPROP", "Godrej Properties Limited", "Residential Real Estate"),
+        StockItem("OBEROREALTY", "Oberoi Realty Limited", "Premium Real Estate"),
+        StockItem("LODHA", "Macrotech Developers Limited (Lodha)", "Real Estate"),
+        StockItem("PRESTIGE", "Prestige Estates Projects Limited", "Real Estate & Hospitality")
     )
 
     /**
-     * Search stocks when 3 or more letters are typed.
+     * Search stocks when 1 or more letters are typed.
      * Matches symbol prefix, company name prefix, individual name word prefixes,
      * and substring occurrences with intelligent relevance ranking.
+     * Automatically includes dynamic custom symbol entry if not present in catalog,
+     * enabling 100% of equities to be searched and predicted.
      */
-    fun search(query: String, limit: Int = 15): List<StockItem> {
+    fun search(query: String, limit: Int = 20): List<StockItem> {
         val q = query.trim().uppercase()
-        if (q.length < 3) return emptyList()
+        if (q.isBlank()) return emptyList()
 
         val exactMatch = mutableListOf<StockItem>()
         val symbolStartsWith = mutableListOf<StockItem>()
@@ -237,6 +319,18 @@ object StockCatalog {
         orderedSet.addAll(nameStartsWith)
         orderedSet.addAll(nameWordStartsWith)
         orderedSet.addAll(containsMatch)
+
+        // If the exact query is not in catalog and user typed >= 2 chars, add as dynamic selectable custom stock
+        if (orderedSet.none { it.symbol == q } && q.length >= 2) {
+            orderedSet.add(
+                StockItem(
+                    symbol = q,
+                    name = "$q Listed Equity",
+                    sector = "Equities / Direct",
+                    exchange = "NSE"
+                )
+            )
+        }
 
         return orderedSet.take(limit).toList()
     }

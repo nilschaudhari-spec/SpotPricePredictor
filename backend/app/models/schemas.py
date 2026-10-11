@@ -10,6 +10,8 @@ class Exchange(str, Enum):
 class AssetType(str, Enum):
     INDEX = "INDEX"
     STOCK = "STOCK"
+    EQUITY = "EQUITY"
+
 
 class OptionType(str, Enum):
     CALL = "CE"
