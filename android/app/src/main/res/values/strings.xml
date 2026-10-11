@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Spot Price Predictor Pro</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_predictor">AI Predictor</string>
+    <string name="nav_option_chain">Option Chain</string>
+    <string name="nav_history">History</string>
+    <string name="nav_analytics">Analytics</string>
+</resources>
