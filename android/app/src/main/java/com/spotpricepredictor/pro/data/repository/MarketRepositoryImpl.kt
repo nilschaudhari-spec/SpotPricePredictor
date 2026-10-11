@@ -227,4 +227,57 @@ class MarketRepositoryImpl @Inject constructor(
     override suspend fun recordActualOutcome(id: Long, actualSpot: Double, status: String) {
         historyDao.recordActualOutcome(id, actualSpot, status)
     }
+
+    override suspend fun getMarketNews(): Result<MarketNewsBriefing> {
+        return try {
+            val response = apiService.getMarketNews()
+            if (response.isSuccessful && response.body() != null) {
+                val dto = response.body()!!
+                val mappedItems = dto.items.map { itm ->
+                    val sectionType = when (itm.section.uppercase()) {
+                        "NATIONAL_GLOBAL" -> NewsSectionType.NATIONAL_GLOBAL
+                        "INDICES_SECTORS" -> NewsSectionType.INDICES_SECTORS
+                        "COMPANY_SPECIFIC" -> NewsSectionType.COMPANY_SPECIFIC
+                        "GLOBAL_COMMODITIES_FX" -> NewsSectionType.GLOBAL_COMMODITIES_FX
+                        "UPCOMING_EVENTS" -> NewsSectionType.UPCOMING_EVENTS
+                        else -> NewsSectionType.NATIONAL_GLOBAL
+                    }
+                    val sentiment = when (itm.impactSentiment.uppercase()) {
+                        "POSITIVE" -> NewsImpactSentiment.POSITIVE
+                        "NEGATIVE" -> NewsImpactSentiment.NEGATIVE
+                        "MIXED" -> NewsImpactSentiment.MIXED
+                        "UNCERTAIN" -> NewsImpactSentiment.UNCERTAIN
+                        else -> NewsImpactSentiment.UNCERTAIN
+                    }
+                    MarketNewsItem(
+                        id = itm.id,
+                        section = sectionType,
+                        title = itm.title,
+                        symbols = itm.symbols,
+                        whatHappened = itm.whatHappened,
+                        whyItMatters = itm.whyItMatters,
+                        likelyImpact = itm.likelyImpact,
+                        sentiment = sentiment,
+                        source = itm.source,
+                        sourceUrl = itm.sourceUrl,
+                        timestamp = itm.timestamp
+                    )
+                }
+                Result.success(
+                    MarketNewsBriefing(
+                        title = dto.title,
+                        lastUpdated = dto.lastUpdated,
+                        macroSummary = dto.macroSummary,
+                        totalItems = dto.totalItems,
+                        items = mappedItems,
+                        disclaimer = dto.disclaimer
+                    )
+                )
+            } else {
+                Result.success(DefaultMarketNews.getFallbackBriefing())
+            }
+        } catch (e: Exception) {
+            Result.success(DefaultMarketNews.getFallbackBriefing())
+        }
+    }
 }

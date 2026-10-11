@@ -114,3 +114,27 @@ data class PredictionResponseDto(
     @SerializedName("model_breakdown") val modelBreakdown: ModelForecastBreakdownDto,
     @SerializedName("disclaimer") val disclaimer: String
 )
+
+data class MarketNewsItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("section") val section: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("symbols") val symbols: List<String> = emptyList(),
+    @SerializedName("what_happened") val whatHappened: String,
+    @SerializedName("why_it_matters") val whyItMatters: String,
+    @SerializedName("likely_impact") val likelyImpact: String,
+    @SerializedName("impact_sentiment") val impactSentiment: String,
+    @SerializedName("source") val source: String,
+    @SerializedName("source_url") val sourceUrl: String,
+    @SerializedName("timestamp") val timestamp: String
+)
+
+data class MarketNewsBriefingDto(
+    @SerializedName("title") val title: String,
+    @SerializedName("last_updated") val lastUpdated: String,
+    @SerializedName("macro_summary") val macroSummary: String,
+    @SerializedName("total_items") val totalItems: Int,
+    @SerializedName("items") val items: List<MarketNewsItemDto>,
+    @SerializedName("disclaimer") val disclaimer: String
+)
+

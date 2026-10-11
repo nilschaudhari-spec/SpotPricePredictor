@@ -15,6 +15,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.spotpricepredictor.pro.presentation.screens.history.HistoryScreen
 import com.spotpricepredictor.pro.presentation.screens.history.HistoryViewModel
+import com.spotpricepredictor.pro.presentation.screens.news.NewsScreen
+import com.spotpricepredictor.pro.presentation.screens.news.NewsViewModel
 import com.spotpricepredictor.pro.presentation.screens.optionchain.OptionChainScreen
 import com.spotpricepredictor.pro.presentation.screens.optionchain.OptionChainViewModel
 import com.spotpricepredictor.pro.presentation.screens.predictor.PredictorScreen
@@ -28,6 +30,7 @@ fun AppNavigation(
     val items = listOf(
         Screen.Predictor,
         Screen.OptionChain,
+        Screen.News,
         Screen.History
     )
 
@@ -78,6 +81,10 @@ fun AppNavigation(
             composable(Screen.OptionChain.route) {
                 val viewModel: OptionChainViewModel = hiltViewModel()
                 OptionChainScreen(viewModel = viewModel)
+            }
+            composable(Screen.News.route) {
+                val viewModel: NewsViewModel = hiltViewModel()
+                NewsScreen(viewModel = viewModel)
             }
             composable(Screen.History.route) {
                 val viewModel: HistoryViewModel = hiltViewModel()

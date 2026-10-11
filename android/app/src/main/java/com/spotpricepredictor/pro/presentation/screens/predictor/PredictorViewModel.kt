@@ -84,6 +84,8 @@ class PredictorViewModel @Inject constructor(
         }
     }
 
+    val customMinutes: StateFlow<String> = customMinutesInput.asStateFlow()
+
     fun onSpotPriceChanged(value: String) {
         spotPriceInput.value = value
     }
@@ -92,13 +94,24 @@ class PredictorViewModel @Inject constructor(
         selectedHorizon.value = horizon
     }
 
+    fun onCustomMinutesChanged(minutes: String) {
+        val digits = minutes.filter { it.isDigit() }.take(4)
+        customMinutesInput.value = digits
+    }
+
     fun onTrendSelected(trend: TrendDirection) {
         selectedTrend.value = trend
     }
 
     fun runPrediction() {
         val spot = spotPriceInput.value.toDoubleOrNull() ?: liveQuote.value?.spotPrice ?: 22520.0
-        val customMins = customMinutesInput.value.toIntOrNull()
+        val isCustom = selectedHorizon.value == PredictionHorizon.CUSTOM
+        val customMins = if (isCustom) {
+            val parsed = customMinutesInput.value.toIntOrNull() ?: 45
+            if (parsed <= 0) 45 else parsed
+        } else {
+            selectedHorizon.value.minutes
+        }
 
         viewModelScope.launch {
             _uiState.value = PredictorUiState.Loading

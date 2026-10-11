@@ -1,6 +1,7 @@
 package com.spotpricepredictor.pro.data.api
 
 import com.spotpricepredictor.pro.data.api.models.LiveQuoteDto
+import com.spotpricepredictor.pro.data.api.models.MarketNewsBriefingDto
 import com.spotpricepredictor.pro.data.api.models.OptionChainResponseDto
 import com.spotpricepredictor.pro.data.api.models.PredictionRequestDto
 import com.spotpricepredictor.pro.data.api.models.PredictionResponseDto
@@ -31,4 +32,8 @@ interface PredictorApiService {
     suspend fun getRealtimeQuote(
         @Path("symbol") symbol: String
     ): Response<LiveQuoteDto>
+
+    @GET("api/v1/market/news")
+    suspend fun getMarketNews(): Response<MarketNewsBriefingDto>
 }
+

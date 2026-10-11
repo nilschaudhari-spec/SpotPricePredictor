@@ -26,7 +26,12 @@ class PredictSpotPriceUseCase @Inject constructor(
 
         // Automatically persist successful prediction for historical tracking & AI learning
         result.onSuccess { pred ->
-            repository.savePrediction(pred, horizon.label)
+            val label = if (horizon == PredictionHorizon.CUSTOM && customMinutes != null) {
+                "Custom (${customMinutes}m)"
+            } else {
+                horizon.label
+            }
+            repository.savePrediction(pred, label)
         }
 
         return result

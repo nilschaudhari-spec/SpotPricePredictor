@@ -34,4 +34,6 @@ interface MarketRepository {
     suspend fun savePrediction(prediction: PredictionResult, horizonLabel: String): Long
 
     suspend fun recordActualOutcome(id: Long, actualSpot: Double, status: String)
+
+    suspend fun getMarketNews(): Result<com.spotpricepredictor.pro.domain.model.MarketNewsBriefing>
 }

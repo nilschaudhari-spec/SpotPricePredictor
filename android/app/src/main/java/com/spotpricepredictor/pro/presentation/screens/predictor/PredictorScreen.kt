@@ -46,6 +46,7 @@ fun PredictorScreen(
     val selectedSymbol by viewModel.selectedSymbol.collectAsState()
     val spotPriceInput by viewModel.spotPriceInput.collectAsState()
     val selectedHorizon by viewModel.selectedHorizon.collectAsState()
+    val customMinutes by viewModel.customMinutes.collectAsState()
     val selectedTrend by viewModel.selectedTrend.collectAsState()
     val currentServerUrl by viewModel.serverUrl.collectAsState()
     val liveQuote by viewModel.liveQuote.collectAsState()
@@ -293,10 +294,121 @@ fun PredictorScreen(
                         .padding(horizontal = 12.dp, vertical = 7.dp)
                 ) {
                     Text(
-                        text = horizon.label,
+                        text = if (horizon == PredictionHorizon.CUSTOM && isSelected) {
+                            "Custom (${if (customMinutes.isNotBlank()) customMinutes else "45"}m)"
+                        } else horizon.label,
                         color = if (isSelected) Color.White else TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        // Custom Horizon Duration Input & Quick Presets
+        if (selectedHorizon == PredictionHorizon.CUSTOM) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(RoyalViolet.copy(alpha = 0.5f))
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "CUSTOM HORIZON DURATION",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+
+                        val currentMinsInt = customMinutes.toIntOrNull() ?: 45
+                        val displayHours = if (currentMinsInt >= 60) " (%.1f hrs)".format(currentMinsInt / 60.0) else ""
+                        Text(
+                            text = "$currentMinsInt Mins$displayHours",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RoyalViolet
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = customMinutes,
+                        onValueChange = { viewModel.onCustomMinutesChanged(it) },
+                        label = { Text("Custom Prediction Duration (Minutes)", fontSize = 11.sp) },
+                        placeholder = { Text("e.g. 10, 20, 45, 90, 120, 240", fontSize = 11.sp) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RoyalViolet,
+                            unfocusedBorderColor = CardBorder,
+                            focusedContainerColor = CardBackground,
+                            unfocusedContainerColor = CardBackground,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "QUICK DURATION PRESETS",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary,
+                        letterSpacing = 0.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(10, 20, 45, 90, 120, 180, 240).forEach { mins ->
+                            val isCurrent = (customMinutes.toIntOrNull() ?: 45) == mins
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (isCurrent) RoyalViolet else CardBackground,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .border(1.dp, if (isCurrent) RoyalViolet else CardBorder, RoundedCornerShape(6.dp))
+                                    .clickable { viewModel.onCustomMinutesChanged(mins.toString()) }
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${mins}m",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCurrent) Color.White else TextSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "AI quant engine will simulate multi-model price pathing for exactly ${if (customMinutes.isNotBlank()) customMinutes else "45"} minutes.",
+                        fontSize = 10.sp,
+                        color = TextMuted
                     )
                 }
             }
