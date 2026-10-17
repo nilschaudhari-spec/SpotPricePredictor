@@ -91,3 +91,32 @@ def test_prediction_orchestrator_end_to_end():
     assert resp.model_breakdown.ml_ensemble_spot > 0
     assert resp.model_breakdown.lstm_spot > 0
     assert resp.model_breakdown.price_action_spot > 0
+
+def test_bearish_prediction_generates_put_strategy():
+    from app.models.schemas import StrategyType
+    req = PredictionRequest(
+        symbol="RELIANCE",
+        exchange=Exchange.NSE,
+        asset_type=AssetType.STOCK,
+        current_spot_price=1200.0,
+        prediction_horizon=PredictionHorizon.MIN_15,
+        trend_mode=TrendDirection.BEARISH
+    )
+    resp = PredictionOrchestrator.run_prediction(req)
+    assert resp.prob_bearish > resp.prob_bullish
+    assert resp.suggested_strategy in [StrategyType.BUY_PUT, StrategyType.PUT_SPREAD]
+    assert resp.stop_loss > resp.current_spot or resp.target_price < resp.current_spot
+
+def test_sideways_prediction_generates_non_directional_strategy():
+    from app.models.schemas import StrategyType
+    req = PredictionRequest(
+        symbol="NIFTY",
+        exchange=Exchange.NSE,
+        asset_type=AssetType.INDEX,
+        current_spot_price=22520.0,
+        prediction_horizon=PredictionHorizon.MIN_15,
+        trend_mode=TrendDirection.SIDEWAYS
+    )
+    resp = PredictionOrchestrator.run_prediction(req)
+    assert resp.prob_sideways >= 0.35
+    assert resp.suggested_strategy in [StrategyType.WAIT, StrategyType.IRON_CONDOR, StrategyType.STRADDLE]

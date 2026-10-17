@@ -37,6 +37,7 @@ fun OptionChainScreen(
     val availableExpiries by viewModel.availableExpiries.collectAsState()
     val selectedExpiryDate by viewModel.selectedExpiryDate.collectAsState()
     val selectedDaysToExpiry by viewModel.selectedDaysToExpiry.collectAsState()
+    val lastSyncTime by viewModel.lastSyncTime.collectAsState()
 
     var showAddStockDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -70,12 +71,30 @@ fun OptionChainScreen(
                     fontWeight = FontWeight.ExtraBold,
                     color = TextPrimary
                 )
-                Text(
-                    text = "Greeks, Open Interest, Expiries & Max Pain",
-                    fontSize = 12.sp,
-                    color = ElectricCyan,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Greeks, OI & Max Pain",
+                        fontSize = 12.sp,
+                        color = ElectricCyan,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Box(
+                        modifier = Modifier
+                            .background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .border(1.dp, NeonEmerald.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "● LIVE • $lastSyncTime",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonEmerald
+                        )
+                    }
+                }
             }
 
             IconButton(
@@ -239,35 +258,114 @@ fun OptionChainScreen(
             }
 
             is OptionChainUiState.Success -> {
-                // Summary bar: Spot, PCR, Max Pain, Selected Expiry
-                Row(
+                // High-Tech Options Terminal Summary Dashboard
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(CardBackground, RoundedCornerShape(12.dp))
-                        .border(1.dp, CardBorder, RoundedCornerShape(12.dp))
+                        .background(CardBackground, RoundedCornerShape(14.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(14.dp))
                         .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column {
-                        Text(text = "LIVE SPOT", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                        Text(text = "₹${"%,.1f".format(state.data.spotPrice)}", fontSize = 14.sp, color = ElectricCyan, fontWeight = FontWeight.ExtraBold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .background(NeonEmerald, androidx.compose.foundation.shape.CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "LIVE SPOT", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = "₹${"%,.1f".format(state.data.spotPrice)}", fontSize = 15.sp, color = ElectricCyan, fontWeight = FontWeight.ExtraBold)
+                        }
+
+                        Column {
+                            val pcrSentiment = when {
+                                state.data.pcr >= 1.15 -> "BULLISH" to NeonEmerald
+                                state.data.pcr <= 0.85 -> "BEARISH" to CrimsonAlert
+                                else -> "NEUTRAL" to AmberWarning
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "PCR", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .background(pcrSentiment.second.copy(alpha = 0.15f), RoundedCornerShape(3.dp))
+                                        .border(0.5.dp, pcrSentiment.second.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = pcrSentiment.first, fontSize = 7.sp, fontWeight = FontWeight.ExtraBold, color = pcrSentiment.second)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = "%.2f".format(state.data.pcr), fontSize = 15.sp, color = pcrSentiment.second, fontWeight = FontWeight.ExtraBold)
+                        }
+
+                        Column {
+                            Text(text = "MAX PAIN", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(text = "₹${state.data.maxPain.toInt()}", fontSize = 15.sp, color = AmberWarning, fontWeight = FontWeight.ExtraBold)
+                        }
+
+                        Column {
+                            Text(text = "EXPIRY", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = state.data.selectedExpiryDate ?: "${state.data.selectedDaysToExpiry.toInt()}d",
+                                fontSize = 13.sp,
+                                color = RoyalViolet,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
                     }
-                    Column {
-                        Text(text = "PCR", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                        Text(text = "%.2f".format(state.data.pcr), fontSize = 14.sp, color = NeonEmerald, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Column {
-                        Text(text = "MAX PAIN", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                        Text(text = "₹${state.data.maxPain.toInt()}", fontSize = 14.sp, color = AmberWarning, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Column {
-                        Text(text = "EXPIRY", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = state.data.selectedExpiryDate ?: "${state.data.selectedDaysToExpiry.toInt()}d",
-                            fontSize = 13.sp,
-                            color = RoyalViolet,
-                            fontWeight = FontWeight.ExtraBold
-                        )
+
+                    HorizontalDivider(color = CardBorder.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    // Key Levels Row: Support, Resistance & Active Strikes
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "SUPPORT:", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "₹${state.data.immediateSupport.toInt()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = NeonEmerald
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "RESISTANCE:", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "₹${state.data.immediateResistance.toInt()}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CrimsonAlert
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "DEPTH:", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${state.data.strikes.size} Strikes",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextSecondary
+                            )
+                        }
                     }
                 }
 

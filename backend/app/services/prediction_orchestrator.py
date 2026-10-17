@@ -5,7 +5,7 @@ import numpy as np
 from app.models.schemas import (
     PredictionRequest, PredictionResponse, AdvancedAnalytics,
     ModelForecastBreakdown, PredictionHorizon, TrendDirection,
-    TechnicalIndicatorInput, OptionChainResponse
+    TechnicalIndicatorInput, OptionChainResponse, StrategyType
 )
 from app.services.greeks_engine import GreeksEngine
 from app.services.oi_analyzer import OIAnalyzer
@@ -42,6 +42,9 @@ class PredictionOrchestrator:
         current_spot = request.current_spot_price
         horizon_mins = cls.resolve_horizon_minutes(request.prediction_horizon, request.custom_minutes)
 
+        # 0. Real-time Quote
+        quote = MarketDataFetcher.get_realtime_quote(request.symbol)
+
         # 1. Option Chain Resolution
         if not request.option_chain or len(request.option_chain) == 0:
             chain_payload = MarketDataFetcher.get_spot_and_chain(
@@ -55,21 +58,10 @@ class PredictionOrchestrator:
         # 2. Technicals & Trend Evaluation
         tech_eval = TechnicalAnalysisEngine.evaluate_technicals(
             spot_price=current_spot,
-            technicals=request.technicals
+            technicals=request.technicals,
+            quote=quote,
+            trend_mode=request.trend_mode
         )
-
-        # Handle user manual trend override if specified
-        if request.trend_mode != TrendDirection.AUTO:
-            trend_overrides = {
-                TrendDirection.STRONG_BULLISH: 75.0,
-                TrendDirection.BULLISH: 40.0,
-                TrendDirection.SIDEWAYS: 0.0,
-                TrendDirection.BEARISH: -40.0,
-                TrendDirection.STRONG_BEARISH: -75.0,
-            }
-            forced_score = trend_overrides.get(request.trend_mode, 0.0)
-            tech_eval["trend_score"] = forced_score
-            tech_eval["detected_direction"] = request.trend_mode
 
         # 3. Open Interest & Dealer Positioning Metrics
         oi_pcr, vol_pcr = OIAnalyzer.calculate_pcr(strikes)
@@ -153,9 +145,10 @@ class PredictionOrchestrator:
         normalized_drift = net_drift / (tech_eval["atr"] * 0.75 + 1e-5)
 
         # Sigmoid probability distribution
-        p_bull = 1.0 / (1.0 + np.exp(- (normalized_drift * 1.5 + (tech_eval["trend_score"] / 75.0))))
-        p_bear = 1.0 / (1.0 + np.exp((normalized_drift * 1.5 + (tech_eval["trend_score"] / 75.0))))
-        p_side = max(0.05, 1.0 - abs(p_bull - p_bear))
+        direction_bias = (normalized_drift * 1.5) + (tech_eval["trend_score"] / 60.0)
+        p_bull = 1.0 / (1.0 + np.exp(- direction_bias))
+        p_bear = 1.0 / (1.0 + np.exp(direction_bias))
+        p_side = max(0.08, 1.0 - abs(p_bull - p_bear) * 0.8)
 
         # Normalize to sum = 1.0
         total_p = p_bull + p_bear + p_side
@@ -169,14 +162,6 @@ class PredictionOrchestrator:
 
         expected_high = round(max(ensemble_spot, current_spot) + (expected_range_half * 0.6), 2)
         expected_low = round(min(ensemble_spot, current_spot) - (expected_range_half * 0.6), 2)
-
-        # Target and Stop Loss
-        if ensemble_spot >= current_spot:
-            target_price = expected_high
-            stop_loss = round(current_spot - (expected_range_half * 0.7), 2)
-        else:
-            target_price = expected_low
-            stop_loss = round(current_spot + (expected_range_half * 0.7), 2)
 
         # Qualitative tags
         market_strength = "Strong" if abs(tech_eval["trend_score"]) >= 45 else ("Moderate" if abs(tech_eval["trend_score"]) >= 15 else "Weak")
@@ -192,6 +177,15 @@ class PredictionOrchestrator:
             confidence_pct=confidence_pct,
             dealer_positioning=dealer_pos
         )
+
+        # Target and Stop Loss aligned with directional trade bias
+        is_bearish_bias = prob_bearish > prob_bullish or strategy in [StrategyType.BUY_PUT, StrategyType.PUT_SPREAD]
+        if is_bearish_bias:
+            target_price = expected_low
+            stop_loss = round(current_spot + (expected_range_half * 0.7), 2)
+        else:
+            target_price = expected_high
+            stop_loss = round(current_spot - (expected_range_half * 0.7), 2)
 
         expected_time_str = f"{horizon_mins} mins"
 

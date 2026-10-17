@@ -4,7 +4,7 @@ from app.models.schemas import StrategyType
 class StrategyRecommender:
     """
     Quantitative Strategy Recommendation Engine.
-    Maps probabilistic directional bias, Volatility Regime (IV),
+    Maps probabilistic directional bias (Bullish, Bearish, Sideways), Volatility Regime (IV),
     and Dealer Gamma Positioning into high-probability option trading structures.
     """
 
@@ -19,21 +19,34 @@ class StrategyRecommender:
         dealer_positioning: str
     ) -> Tuple[StrategyType, str]:
         """
-        Determines strategy and produces clear rationale.
+        Determines strategy and produces clear rationale with balanced Call, Put, and Range structures.
         """
         # Low confidence or choppy noise -> NO TRADE / WAIT
-        if confidence_pct < 55.0:
+        if confidence_pct < 45.0:
             return (
                 StrategyType.WAIT,
-                "Confidence score is below threshold (55%). Market signals are in conflict. Wait for confirmation."
+                "Confidence score is below threshold (45%). Market signals are in conflict. Wait for confirmation."
             )
 
-        # Extreme IV or event risk check
+        # Volatility regime
         is_high_iv = avg_iv >= 20.0
         is_low_iv = avg_iv < 13.0
 
-        # Bullish scenarios
-        if prob_bullish >= 0.55:
+        # 1. Bearish Scenarios (Triggers BUY PUT or PUT SPREAD)
+        if prob_bearish > prob_bullish and (prob_bearish >= 0.45 or prob_bearish > prob_sideways):
+            if is_high_iv:
+                return (
+                    StrategyType.PUT_SPREAD,
+                    f"Strong Bearish bias ({prob_bearish*100:.0f}%) with elevated IV ({avg_iv:.1f}%). Bear Put Spread hedges against high option premium collapse while capturing downside."
+                )
+            else:
+                return (
+                    StrategyType.BUY_PUT,
+                    f"Bearish breakdown detected ({prob_bearish*100:.0f}%) with favorable IV ({avg_iv:.1f}%). Long Put strategy optimizes delta acceleration on downward momentum."
+                )
+
+        # 2. Bullish Scenarios (Triggers BUY CALL or CALL SPREAD)
+        elif prob_bullish > prob_bearish and (prob_bullish >= 0.45 or prob_bullish > prob_sideways):
             if is_high_iv:
                 return (
                     StrategyType.CALL_SPREAD,
@@ -45,21 +58,8 @@ class StrategyRecommender:
                     f"Bullish trend confirmed ({prob_bullish*100:.0f}%) with affordable IV ({avg_iv:.1f}%). Outright long call provides asymmetric upside."
                 )
 
-        # Bearish scenarios
-        elif prob_bearish >= 0.55:
-            if is_high_iv:
-                return (
-                    StrategyType.PUT_SPREAD,
-                    f"Strong Bearish bias ({prob_bearish*100:.0f}%) with elevated IV ({avg_iv:.1f}%). Bear Put Spread hedges against high option premium collapse."
-                )
-            else:
-                return (
-                    StrategyType.BUY_PUT,
-                    f"Bearish breakdown detected ({prob_bearish*100:.0f}%) with low-to-moderate IV ({avg_iv:.1f}%). Long put strategy optimizes delta velocity."
-                )
-
-        # Sideways / Range-bound scenarios
-        elif prob_sideways >= 0.45:
+        # 3. Sideways / Range-bound Scenarios (Triggers IRON CONDOR or STRADDLE)
+        elif prob_sideways >= 0.38 or abs(prob_bullish - prob_bearish) < 0.10:
             if is_high_iv or "Long Gamma" in dealer_positioning:
                 return (
                     StrategyType.IRON_CONDOR,
@@ -73,7 +73,7 @@ class StrategyRecommender:
             else:
                 return (
                     StrategyType.WAIT,
-                    "Sideways consolidation with neutral volatility. Better risk/reward exists by waiting for breakout."
+                    f"Sideways consolidation ({prob_sideways*100:.0f}%). Balanced order flow with no clear directional edge. Wait for range breakout."
                 )
 
         return (

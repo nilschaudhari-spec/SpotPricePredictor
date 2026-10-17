@@ -51,6 +51,8 @@ fun PredictorScreen(
     val currentServerUrl by viewModel.serverUrl.collectAsState()
     val liveQuote by viewModel.liveQuote.collectAsState()
     val isFetchingQuote by viewModel.isFetchingQuote.collectAsState()
+    val lastSyncTime by viewModel.lastSyncTime.collectAsState()
+    val isAutoDetectActive by viewModel.isAutoDetectActive.collectAsState()
 
     var showServerDialog by remember { mutableStateOf(false) }
     var showAddStockDialog by remember { mutableStateOf(false) }
@@ -195,19 +197,39 @@ fun PredictorScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 2. Current Spot Price Input + Real-Time Live Market Data Badge
+        // 2. Current Spot Price Input + Real-Time Live Market Data Badge & Auto-Detect Status
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "CURRENT SPOT PRICE",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextSecondary,
-                letterSpacing = 1.sp
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "CURRENT SPOT PRICE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary,
+                    letterSpacing = 1.sp
+                )
+                if (isAutoDetectActive) {
+                    Box(
+                        modifier = Modifier
+                            .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .border(1.dp, ElectricCyan.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "⚡ AUTO-DETECTED",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = ElectricCyan
+                        )
+                    }
+                }
+            }
 
             if (liveQuote != null) {
                 val isPositive = liveQuote!!.change >= 0
@@ -220,10 +242,11 @@ fun PredictorScreen(
                     Box(
                         modifier = Modifier
                             .background(color.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "● LIVE $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%)",
+                            text = "● LIVE $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%) • $lastSyncTime",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = color
@@ -240,19 +263,41 @@ fun PredictorScreen(
             label = { Text("Spot Price (₹)") },
             modifier = Modifier.fillMaxWidth(),
             trailingIcon = {
-                IconButton(onClick = { viewModel.fetchLiveQuote(selectedSymbol) }) {
-                    if (isFetchingQuote) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = ElectricCyan,
-                            strokeWidth = 2.dp
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(end = 4.dp)
+                ) {
+                    // Quick Action: Auto-Detect Live Spot Price
+                    Box(
+                        modifier = Modifier
+                            .background(ElectricCyan.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
+                            .border(1.dp, ElectricCyan.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                            .clickable { viewModel.autoDetectSpotPrice() }
+                            .padding(horizontal = 7.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "AUTO-DETECT",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElectricCyan
                         )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Sync,
-                            contentDescription = "Refresh Live Price",
-                            tint = ElectricCyan
-                        )
+                    }
+
+                    IconButton(onClick = { viewModel.fetchLiveQuote(selectedSymbol) }) {
+                        if (isFetchingQuote) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = ElectricCyan,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = "Refresh Live Price",
+                                tint = ElectricCyan
+                            )
+                        }
                     }
                 }
             },

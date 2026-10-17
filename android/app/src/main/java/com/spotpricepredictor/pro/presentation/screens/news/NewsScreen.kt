@@ -39,6 +39,8 @@ fun NewsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedSection by viewModel.selectedSection.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val lastSyncTime by viewModel.lastSyncTime.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
     Column(
         modifier = modifier
@@ -74,14 +76,32 @@ fun NewsScreen(
                 }
 
                 Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Market News Briefing",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Box(
+                            modifier = Modifier
+                                .background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .border(1.dp, NeonEmerald.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "● LIVE FEED",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = NeonEmerald
+                            )
+                        }
+                    }
                     Text(
-                        text = "Market News Briefing",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "India & Global Developments • Market Impact Analysis",
+                        text = if (lastSyncTime.isNotEmpty()) "Real-time Google News & ET Feeds • Synced $lastSyncTime" else "Real-time Google News & ET Feeds • Market Impact Analysis",
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
@@ -89,11 +109,19 @@ fun NewsScreen(
             }
 
             IconButton(onClick = { viewModel.loadNews() }) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh",
-                    tint = ElectricCyan
-                )
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = ElectricCyan,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = ElectricCyan
+                    )
+                }
             }
         }
 
@@ -262,15 +290,25 @@ fun NewsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "REAL-TIME MACRO BRIEFING",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = ElectricCyan,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .background(NeonEmerald, androidx.compose.foundation.shape.CircleShape)
+                                        )
+                                    }
                                     Text(
-                                        text = "DAILY MACRO BRIEFING",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = ElectricCyan,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Text(
-                                        text = briefing.lastUpdated,
+                                        text = if (lastSyncTime.isNotEmpty()) "Live • $lastSyncTime" else briefing.lastUpdated,
                                         fontSize = 10.sp,
                                         color = TextMuted
                                     )

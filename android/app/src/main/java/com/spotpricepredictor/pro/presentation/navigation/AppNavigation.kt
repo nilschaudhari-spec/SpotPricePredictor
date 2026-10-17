@@ -3,6 +3,7 @@ package com.spotpricepredictor.pro.presentation.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -40,12 +41,15 @@ fun AppNavigation(
 
     val context = LocalContext.current
     val tickerSettingsManager = remember { TickerSettingsManager(context) }
+    val tickerViewModel: TickerViewModel = hiltViewModel()
+    val tickerItems by tickerViewModel.tickerItems.collectAsState()
 
     Scaffold(
         topBar = {
             MarketTickerTape(
+                tickerItems = tickerItems,
                 tickerSettingsManager = tickerSettingsManager,
-                onSelectSymbol = { symbol ->
+                onSelectSymbol = { _ ->
                     navController.navigate(Screen.Predictor.route) {
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true

@@ -211,21 +211,41 @@ class MarketDataFetcher:
             call_greeks = GreeksEngine.calculate_greeks(spot_price, strike, T, call_iv / 100.0, 0.07, OptionType.CALL)
             put_greeks = GreeksEngine.calculate_greeks(spot_price, strike, T, put_iv / 100.0, 0.07, OptionType.PUT)
 
-            # OI distribution: Peaks around round numbers and near ATM
+            # Base OI distribution: Peaks around round numbers and near ATM
             call_oi_base = int(120000 * math.exp(-0.08 * (i ** 2)) + (80000 if strike % (step * 2) == 0 else 20000))
             put_oi_base = int(115000 * math.exp(-0.08 * (i ** 2)) + (75000 if strike % (step * 2) == 0 else 20000))
 
-            call_chg_oi = int(call_oi_base * (0.15 if i > 0 else -0.05))
-            put_chg_oi = int(put_oi_base * (0.18 if i < 0 else -0.04))
+            # Dynamic OI distribution and buildup aligned with market trend
+            chg_pct = quote.get("change_percent", 0.0)
+            if chg_pct <= -0.15: # Bearish market: Heavy Call writing overhead, Put unwinding
+                call_weight = 1.35
+                put_weight = 0.82
+                call_chg_oi = int(call_oi_base * (0.25 if i >= 0 else 0.05))
+                put_chg_oi = int(put_oi_base * (-0.12 if i <= 0 else -0.05))
+                call_buildup = "Short Buildup" if i >= 0 else "Long Buildup"
+                put_buildup = "Long Unwinding" if i <= 0 else "Short Buildup"
+            elif chg_pct >= 0.15: # Bullish market: Heavy Put writing support, Call short covering
+                call_weight = 0.82
+                put_weight = 1.35
+                call_chg_oi = int(call_oi_base * (-0.08 if i >= 0 else -0.02))
+                put_chg_oi = int(put_oi_base * (0.25 if i <= 0 else 0.05))
+                call_buildup = "Short Covering" if i >= 0 else "Long Buildup"
+                put_buildup = "Short Buildup" if i <= 0 else "Long Buildup"
+            else: # Neutral / Sideways
+                call_weight = 1.0
+                put_weight = 1.0
+                call_chg_oi = int(call_oi_base * (0.05 if i > 0 else -0.05))
+                put_chg_oi = int(put_oi_base * (0.05 if i < 0 else -0.05))
+                call_buildup = "Consolidation"
+                put_buildup = "Consolidation"
 
-            # Buildup logic
-            call_buildup = "Short Buildup" if (call_ltp < spot_price * 0.02 and call_chg_oi > 0) else "Long Buildup"
-            put_buildup = "Short Buildup" if (put_ltp < spot_price * 0.02 and put_chg_oi > 0) else "Long Unwinding"
+            call_oi_val = int(call_oi_base * call_weight)
+            put_oi_val = int(put_oi_base * put_weight)
 
             call_leg = OptionLegData(
                 ltp=round(call_ltp, 2),
-                volume=int(call_oi_base * 1.4),
-                oi=call_oi_base,
+                volume=int(call_oi_val * 1.4),
+                oi=call_oi_val,
                 change_in_oi=call_chg_oi,
                 iv=round(call_iv, 2),
                 greeks=call_greeks,
@@ -234,8 +254,8 @@ class MarketDataFetcher:
 
             put_leg = OptionLegData(
                 ltp=round(put_ltp, 2),
-                volume=int(put_oi_base * 1.3),
-                oi=put_oi_base,
+                volume=int(put_oi_val * 1.3),
+                oi=put_oi_val,
                 change_in_oi=put_chg_oi,
                 iv=round(put_iv, 2),
                 greeks=put_greeks,

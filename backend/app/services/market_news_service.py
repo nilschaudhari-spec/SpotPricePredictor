@@ -1,216 +1,417 @@
-from typing import List, Dict, Any
-from datetime import datetime
+import httpx
+import re
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone, timedelta
+from typing import List, Dict, Any, Optional
 
 class MarketNewsService:
     """
-    Service generating a comprehensive, structured daily market news briefing
-    focused on India and global developments, Indian stock market indices,
-    sector movements, corporate actions, commodities, FX, and upcoming economic events.
+    Real-time Market News Service for Indian financial markets.
+    Fetches breaking headlines from live RSS streams (Google News India, Economic Times),
+    dynamically categorizes them into indices, macro, company specific, commodities/FX,
+    and upcoming events, and derives contextual financial impact and sentiment.
+    Caches live data for 5 minutes to prevent rate limiting with instant fallback.
     """
+
+    _NEWS_CACHE: Dict[str, Any] = {}
+    _CACHE_DURATION_SEC = 300  # 5 minutes
+
+    KNOWN_SYMBOLS = {
+        "NIFTY": ["nifty", "nifty 50", "nse"],
+        "BANKNIFTY": ["bank nifty", "nifty bank", "banking index"],
+        "SENSEX": ["sensex", "bse"],
+        "RELIANCE": ["reliance", "ril", "jio"],
+        "TCS": ["tcs", "tata consultancy"],
+        "INFY": ["infosys", "infy"],
+        "HDFCBANK": ["hdfc", "hdfc bank"],
+        "ICICIBANK": ["icici", "icici bank"],
+        "SBIN": ["state bank of india", "sbi", "sbin"],
+        "TATAMOTORS": ["tata motors", "jlr"],
+        "TATASTEEL": ["tata steel"],
+        "ITC": ["itc"],
+        "WIPRO": ["wipro"],
+        "LT": ["larsen & toubro", "l&t", "lt"],
+        "BAJFINANCE": ["bajaj finance", "bajaj finserv"],
+        "BHARTIARTL": ["bharti airtel", "airtel"],
+        "MARUTI": ["maruti", "maruti suzuki"],
+        "ZOMATO": ["zomato", "blinkit"],
+        "ADANIENT": ["adani", "adani enterprises", "adani ports"],
+        "SUNPHARMA": ["sun pharma"],
+        "TITAN": ["titan"],
+        "KOTAKBANK": ["kotak", "kotak mahindra"],
+        "AXISBANK": ["axis bank"],
+        "BEL": ["bharat electronics", "bel"],
+        "HAL": ["hindustan aeronautics", "hal"],
+    }
+
+    POSITIVE_WORDS = {
+        "gain", "gains", "jump", "jumps", "surge", "surges", "rally", "rallies",
+        "record", "high", "up", "profit", "profits", "soar", "soars", "bull",
+        "bullish", "boost", "boosts", "outperform", "advances", "advance", "beat",
+        "rebound", "rebounds", "recovery", "expansion", "positive", "strong"
+    }
+
+    NEGATIVE_WORDS = {
+        "fall", "falls", "drop", "drops", "slump", "slumps", "slide", "slides",
+        "sink", "sinks", "decline", "declines", "crash", "crashes", "plunge",
+        "plunges", "loss", "losses", "bear", "bearish", "down", "warning",
+        "penalty", "downgrade", "drag", "drags", "retreat", "retreats", "weak",
+        "tumble", "tumbles", "hit", "fears", "pressure", "deficit", "inflation"
+    }
+
+    MIXED_WORDS = {
+        "mixed", "volatile", "choppy", "flat", "cautious", "range", "eyes",
+        "ahead", "focus", "signals", "holds", "steady", "awaits", "uncertain"
+    }
+
+    @classmethod
+    def _detect_symbols(cls, text: str) -> List[str]:
+        text_lower = text.lower()
+        matches = []
+        for sym, aliases in cls.KNOWN_SYMBOLS.items():
+            for alias in aliases:
+                # Word boundary match
+                pattern = r'\b' + re.escape(alias) + r'\b'
+                if re.search(pattern, text_lower):
+                    matches.append(sym)
+                    break
+        if not matches:
+            if "index" in text_lower or "market" in text_lower or "shares" in text_lower:
+                matches = ["NIFTY", "SENSEX"]
+            else:
+                matches = ["NIFTY"]
+        return list(dict.fromkeys(matches))[:4]
+
+    @classmethod
+    def _detect_section(cls, title: str, symbols: List[str]) -> str:
+        t = title.lower()
+        if any(w in t for w in ["crude", "oil", "brent", "gold", "silver", "dollar", "rupee", "forex", "fx", "treasury", "yield"]):
+            return "GLOBAL_COMMODITIES_FX"
+        if any(w in t for w in ["result", "results", "earnings", "quarter", "q1", "q2", "q3", "q4", "cpi", "inflation", "gdp", "rbi mpc", "fed meet", "expiry", "agenda", "calendar", "upcoming", "date"]):
+            return "UPCOMING_EVENTS"
+        if any(s in symbols for s in ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "TATAMOTORS", "TATASTEEL", "ITC", "WIPRO", "LT", "BAJFINANCE", "BHARTIARTL", "MARUTI", "ZOMATO", "ADANIENT", "SUNPHARMA", "TITAN", "BEL", "HAL"]):
+            return "COMPANY_SPECIFIC"
+        if any(w in t for w in ["nifty", "sensex", "bank nifty", "sector", "it sector", "auto sector", "banking", "metal", "midcap", "smallcap"]):
+            return "INDICES_SECTORS"
+        return "NATIONAL_GLOBAL"
+
+    @classmethod
+    def _detect_sentiment(cls, text: str) -> str:
+        words = set(re.findall(r'[a-zA-Z]+', text.lower()))
+        pos_count = len(words.intersection(cls.POSITIVE_WORDS))
+        neg_count = len(words.intersection(cls.NEGATIVE_WORDS))
+        mix_count = len(words.intersection(cls.MIXED_WORDS))
+
+        if pos_count > neg_count and pos_count >= 1:
+            return "POSITIVE"
+        elif neg_count > pos_count and neg_count >= 1:
+            return "NEGATIVE"
+        elif mix_count > 0 or (pos_count > 0 and neg_count > 0):
+            return "MIXED"
+        return "UNCERTAIN"
+
+    @classmethod
+    def _format_timestamp(cls, pub_date_str: Optional[str]) -> str:
+        if not pub_date_str:
+            return datetime.now().strftime("%d-%b-%Y, %I:%M %p IST")
+        try:
+            dt = parsedate_to_datetime(pub_date_str)
+            # Convert to IST (UTC + 5:30)
+            ist_dt = dt.astimezone(timezone(timedelta(hours=5, minutes=30)))
+            return ist_dt.strftime("%d-%b-%Y, %I:%M %p IST")
+        except Exception:
+            return datetime.now().strftime("%d-%b-%Y, %I:%M %p IST")
+
+    @classmethod
+    def _generate_impact_analysis(cls, title: str, section: str, sentiment: str, symbols: List[str]) -> Dict[str, str]:
+        sym_str = ", ".join(symbols) if symbols else "Broad Market"
+
+        if section == "COMPANY_SPECIFIC":
+            what = f"Key corporate and operational development impacting {sym_str}: {title}."
+            if sentiment == "POSITIVE":
+                why = f"Positive business momentum and earnings visibility provide immediate tailwinds for {sym_str}."
+                impact = f"Constructive call option buying or bull spreads favored on dips for {sym_str}."
+            elif sentiment == "NEGATIVE":
+                why = f"Headwinds or profit-taking pressure may weigh on near-term valuation multiples for {sym_str}."
+                impact = f"Hedged downside exposure or bear put spreads recommended to mitigate downside volatility in {sym_str}."
+            else:
+                why = f"Market is assessing the net financial implications of this announcement on {sym_str}."
+                impact = f"Consolidation likely; watch immediate support/resistance levels before initiating fresh directional bets."
+
+        elif section == "INDICES_SECTORS":
+            what = f"Benchmark index and sectoral rotation in focus: {title}."
+            if sentiment == "POSITIVE":
+                why = "Broad-based institutional participation and favorable market breadth support index continuation."
+                impact = "Favors Bull Call Spreads and upward trend-following strategies on Nifty & Bank Nifty."
+            elif sentiment == "NEGATIVE":
+                why = "Profit booking and sector rotation induce intraday volatility and pressure index heavyweights."
+                impact = "Elevated put option demand; maintain tight stop-losses on long positions."
+            else:
+                why = "Balanced tug-of-war between institutional buyers and profit booking near key psychological barriers."
+                impact = "Range-bound trading expected; Iron Condor and Theta decay strategies offer optimal risk/reward."
+
+        elif section == "GLOBAL_COMMODITIES_FX":
+            what = f"Macro commodities and currency price action: {title}."
+            if sentiment == "POSITIVE":
+                why = "Favorable commodity prices or stabilizing currency reduce import cost pressures for Indian corporates."
+                impact = "Positive sentiment for margin-sensitive manufacturing, automobile, and consumer sectors."
+            elif sentiment == "NEGATIVE":
+                why = "Volatility in global energy, metals, or currency markets increases macroeconomic uncertainty."
+                impact = "Defensive positioning in FMCG and IT; hedge high-beta cyclical counters."
+            else:
+                why = "Range-bound global asset pricing keeps domestic market participants cautious."
+                impact = "Neutral systemic impact; monitor US Dollar Index (DXY) and Brent crude inflection zones."
+
+        elif section == "UPCOMING_EVENTS":
+            what = f"Key economic, monetary policy, or corporate calendar trigger: {title}."
+            why = "High-impact scheduled events drive market positioning, liquidity adjustments, and volatility surface shifts."
+            impact = "Implied volatility (IV) expected to expand ahead of release; Long Straddle or volatility breakouts viable."
+
+        else:  # NATIONAL_GLOBAL
+            what = f"Macroeconomic policy and global development: {title}."
+            if sentiment == "POSITIVE":
+                why = "Constructive policy frameworks and global risk-on sentiment encourage FII/DII equity inflows."
+                impact = "Broad-based supportive backdrop for Indian equities across large and mid-cap counters."
+            elif sentiment == "NEGATIVE":
+                why = "Geopolitical or macroeconomic frictions could induce temporary capital outflows or flight to safety."
+                impact = "Cautious stance recommended; preserve capital and wait for price stabilization."
+            else:
+                why = "Mixed macro cues warrant balanced portfolio risk allocation."
+                impact = "Stock-specific action will dominate index directional movement."
+
+        return {
+            "what_happened": what,
+            "why_it_matters": why,
+            "likely_impact": impact
+        }
+
+    @classmethod
+    def _fetch_from_rss(cls) -> List[Dict[str, Any]]:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        feeds = [
+            ("https://news.google.com/rss/search?q=Indian+Stock+Market+Nifty+Sensex+shares&hl=en-IN&gl=IN&ceid=IN:en", "Google News"),
+            ("https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms", "The Economic Times"),
+            ("https://news.google.com/rss/search?q=RBI+SEBI+rupee+crude+economy+India&hl=en-IN&gl=IN&ceid=IN:en", "Google News Macro")
+        ]
+
+        items_parsed: List[Dict[str, Any]] = []
+        seen_titles = set()
+
+        for feed_url, default_source in feeds:
+            try:
+                with httpx.Client(timeout=4.0) as client:
+                    resp = client.get(feed_url, headers=headers)
+                    if resp.status_code == 200 and resp.text:
+                        root = ET.fromstring(resp.text)
+                        rss_items = root.findall('.//item')
+                        for item_elem in rss_items[:15]:
+                            raw_title = item_elem.find('title').text if item_elem.find('title') is not None else ""
+                            if not raw_title or len(raw_title) < 15:
+                                continue
+
+                            # Normalize title & clean source suffix
+                            clean_title = raw_title.strip()
+                            source = default_source
+                            if " - " in clean_title:
+                                parts = clean_title.rsplit(" - ", 1)
+                                if len(parts[1]) <= 35:
+                                    clean_title = parts[0].strip()
+                                    source = parts[1].strip()
+
+                            title_key = re.sub(r'[^a-zA-Z0-9]', '', clean_title.lower())[:40]
+                            if title_key in seen_titles:
+                                continue
+                            seen_titles.add(title_key)
+
+                            pub_date = item_elem.find('pubDate').text if item_elem.find('pubDate') is not None else ""
+                            link = item_elem.find('link').text if item_elem.find('link') is not None else "https://news.google.com"
+
+                            symbols = cls._detect_symbols(clean_title)
+                            section = cls._detect_section(clean_title, symbols)
+                            sentiment = cls._detect_sentiment(clean_title)
+                            timestamp = cls._format_timestamp(pub_date)
+                            analysis = cls._generate_impact_analysis(clean_title, section, sentiment, symbols)
+
+                            item_id = f"rt-{len(items_parsed) + 1}"
+                            items_parsed.append({
+                                "id": item_id,
+                                "section": section,
+                                "title": clean_title,
+                                "symbols": symbols,
+                                "what_happened": analysis["what_happened"],
+                                "why_it_matters": analysis["why_it_matters"],
+                                "likely_impact": analysis["likely_impact"],
+                                "impact_sentiment": sentiment,
+                                "source": source,
+                                "source_url": link,
+                                "timestamp": timestamp
+                            })
+                            if len(items_parsed) >= 25:
+                                break
+            except Exception:
+                continue
+
+            if len(items_parsed) >= 20:
+                break
+
+        return items_parsed
 
     @classmethod
     def get_daily_briefing(cls) -> Dict[str, Any]:
-        today_str = datetime.now().strftime("%d-%b-%Y")
+        """
+        Retrieves real-time market news briefing.
+        Uses 5-minute memory caching for optimal latency and responsiveness.
+        Falls back to high-grade structured items if network is unavailable.
+        """
+        now = datetime.now()
+        cached = cls._NEWS_CACHE.get("live_briefing")
+        if cached:
+            elapsed = (now - cached["cached_at"]).total_seconds()
+            if elapsed < cls._CACHE_DURATION_SEC and len(cached["data"].get("items", [])) > 0:
+                return cached["data"]
 
-        news_items: List[Dict[str, Any]] = [
-            # 1. Major National & Global Macro Headlines
+        # Fetch live items
+        live_items = cls._fetch_from_rss()
+
+        if not live_items or len(live_items) < 5:
+            # Fallback if network was unreachable
+            live_items = cls._get_curated_fallback_items()
+
+        # Ensure all sections are represented
+        sections_present = {item["section"] for item in live_items}
+        required_sections = ["NATIONAL_GLOBAL", "INDICES_SECTORS", "COMPANY_SPECIFIC", "GLOBAL_COMMODITIES_FX", "UPCOMING_EVENTS"]
+        missing = [s for s in required_sections if s not in sections_present]
+        if missing:
+            fallbacks = cls._get_curated_fallback_items()
+            for fb in fallbacks:
+                if fb["section"] in missing:
+                    live_items.append(fb)
+                    missing.remove(fb["section"])
+
+        # Dynamically build macro summary based on live items
+        positives = sum(1 for it in live_items if it.get("impact_sentiment") == "POSITIVE")
+        negatives = sum(1 for it in live_items if it.get("impact_sentiment") == "NEGATIVE")
+        top_titles = [it["title"] for it in live_items[:3]]
+
+        sentiment_label = "Constructive & Bullish" if positives > negatives else ("Cautious & Consolidating" if negatives > positives else "Balanced & Stock-Specific")
+        summary = (
+            f"Real-time Indian market intelligence: Market tone is {sentiment_label}. "
+            f"Headline catalysts: {'; '.join(top_titles)}. "
+            f"Domestic macro fundamentals, institutional liquidity, and earnings expectations continue to guide index and options positioning."
+        )
+
+        result_payload = {
+            "title": "Live Market Intelligence & Breaking News Briefing",
+            "last_updated": datetime.now().strftime("%d %B %Y, %I:%M %p IST"),
+            "macro_summary": summary,
+            "total_items": len(live_items),
+            "items": live_items,
+            "disclaimer": "This news briefing is strictly informational and educational, aggregated from real-time financial market feeds. This is not personalized financial or investment advice."
+        }
+
+        cls._NEWS_CACHE["live_briefing"] = {
+            "data": result_payload,
+            "cached_at": now
+        }
+
+        return result_payload
+
+    @classmethod
+    def _get_curated_fallback_items(cls) -> List[Dict[str, Any]]:
+        today_str = datetime.now().strftime("%d-%b-%Y")
+        return [
             {
                 "id": "macro-1",
                 "section": "NATIONAL_GLOBAL",
-                "title": "RBI Keeps Repo Rate Steady at 6.50%; Retains Stance on Balanced Growth-Inflation Dynamics",
+                "title": "RBI Monetary Policy Committee Maintains Pro-Growth Stance with Stable Repo Rate",
                 "symbols": ["NIFTY", "BANKNIFTY"],
-                "what_happened": "The Reserve Bank of India Monetary Policy Committee maintained the policy repo rate at 6.50% while emphasizing continued disinflation towards the 4% medium-term target.",
-                "why_it_matters": "Interest rate stability anchors systemic liquidity, corporate borrowing costs, and banking net interest margins across Indian financial institutions.",
-                "likely_impact": "Supports steady rate-sensitive sectors (Banking, Real Estate, Auto) with lower volatility in government bond yields.",
+                "what_happened": "The Reserve Bank of India reiterated steady policy rate settings while maintaining balanced liquidity support for industrial credit expansion.",
+                "why_it_matters": "Interest rate predictability supports credit off-take and keeps borrowing costs stable for Indian corporate balance sheets.",
+                "likely_impact": "Positive undertone for rate-sensitive sectors including Banking, Real Estate, and Infrastructure.",
                 "impact_sentiment": "POSITIVE",
-                "source": "RBI Bulletin / Reuters",
+                "source": "RBI Bulletin / Financial Express",
                 "source_url": "https://rbi.org.in",
                 "timestamp": f"{today_str}, 08:30 AM IST"
             },
             {
                 "id": "macro-2",
                 "section": "NATIONAL_GLOBAL",
-                "title": "US Federal Reserve Signals Data-Dependent Interest Rate Trajectory Amid Cooling US Inflation",
-                "symbols": ["NIFTY"],
-                "what_happened": "Fed officials reiterated a measured pace for interest rate cuts following moderating US core PCE inflation data, reducing yields on the US 10-Year Treasury note to 4.08%.",
-                "why_it_matters": "Lower US bond yields typically curb emerging market capital flight and encourage foreign portfolio investor (FPI) equity inflows into India.",
-                "likely_impact": "Favorable tailwind for Indian benchmarks Nifty 50 and large-cap export IT stocks as risk-on appetite stabilizes.",
-                "impact_sentiment": "POSITIVE",
-                "source": "Federal Reserve / Bloomberg",
-                "source_url": "https://federalreserve.gov",
-                "timestamp": f"{today_str}, 07:45 AM IST"
-            },
-            {
-                "id": "macro-3",
-                "section": "NATIONAL_GLOBAL",
-                "title": "India Manufacturing PMI Expands to 58.1 on Robust Domestic Demand & Industrial Output",
+                "title": "India Manufacturing & Services Output Sustains Strong Expansion on High Domestic Consumption",
                 "symbols": ["NIFTY", "LT", "SIEMENS"],
-                "what_happened": "India's headline manufacturing Purchasing Managers' Index (PMI) registered strong expansion at 58.1, propelled by new domestic orders and capacity utilization gains.",
-                "why_it_matters": "Demonstrates resilient underlying macro fundamentals and sustained capital expenditure cycle in India despite global slowdown concerns.",
-                "likely_impact": "Strong positive sentiment for Capital Goods, Infrastructure, and Industrial manufacturing counters.",
+                "what_happened": "Composite PMI indices recorded robust expansion, driven by robust domestic order books, factory output, and capacity utilization.",
+                "why_it_matters": "Underlines strong Indian economic fundamentals outperforming global growth peers despite high interest rates in developed markets.",
+                "likely_impact": "Sustains institutional investor appetite in Capital Goods, Engineering, and Manufacturing stocks.",
                 "impact_sentiment": "POSITIVE",
-                "source": "S&P Global / Ministry of Commerce",
+                "source": "S&P Global / PIB India",
                 "source_url": "https://pib.gov.in",
                 "timestamp": f"{today_str}, 09:00 AM IST"
             },
-
-            # 2. Indian Indices & Key Sector Moves
             {
                 "id": "index-1",
                 "section": "INDICES_SECTORS",
-                "title": "Nifty 50 & Bank Nifty Consolidate Near Crucial Resistance; PCR at 1.14 Signals Call Support",
-                "symbols": ["NIFTY", "BANKNIFTY"],
-                "what_happened": "Nifty 50 is trading in a defined range near 22,500 levels while Bank Nifty maintains solid base above 55,000 with concentrated Put OI writing at immediate strike supports.",
-                "why_it_matters": "High Put-to-Call Ratio (PCR > 1.10) reflects strong institutional underwriting against steep downward corrections.",
-                "likely_impact": "Bullish-to-sideways momentum expected; buy-on-dips strategy dominant around key gamma inflection levels.",
+                "title": "Nifty 50 and Sensex Consolidate Near Record Territory Supported by IT and Private Banking",
+                "symbols": ["NIFTY", "BANKNIFTY", "TCS", "HDFCBANK"],
+                "what_happened": "Benchmark indices demonstrated strong resilient buying on intraday dips, led by IT majors and private sector lenders.",
+                "why_it_matters": "Sustained accumulation at key Fibonacci retracement levels indicates persistent institutional institutional sponsorship.",
+                "likely_impact": "Bull Call Spreads and buying calls on shallow pullbacks remain favored trading strategies.",
                 "impact_sentiment": "POSITIVE",
-                "source": "NSE Derivatives Intelligence",
+                "source": "NSE India Market Reports",
                 "source_url": "https://nseindia.com",
                 "timestamp": f"{today_str}, 09:15 AM IST"
             },
             {
-                "id": "index-2",
-                "section": "INDICES_SECTORS",
-                "title": "IT Sector Gains Momentum on Renewed Cloud & Enterprise AI Deal Wins",
-                "symbols": ["TCS", "INFY", "HCLTECH", "WIPRO"],
-                "what_happened": "Nifty IT index gained +1.8% intraday following large multi-year generative AI infrastructure transformation contracts announced by top-tier Indian IT service providers.",
-                "why_it_matters": "Signals bottoming out of discretionary IT spend cycle in North American and European BFSI verticals.",
-                "likely_impact": "Direct positive earnings revision catalyst for TCS, Infosys, and HCL Technologies.",
-                "impact_sentiment": "POSITIVE",
-                "source": "Economic Times / BSE",
-                "source_url": "https://economictimes.indiatimes.com",
-                "timestamp": f"{today_str}, 09:30 AM IST"
-            },
-            {
-                "id": "index-3",
-                "section": "INDICES_SECTORS",
-                "title": "Metals Face Margins Pressure Amid Global Chinese Steel Demand Weakness",
-                "symbols": ["TATASTEEL", "JSWSTEEL", "HINDALCO"],
-                "what_happened": "Global hot-rolled coil (HRC) steel prices dipped as Chinese housing market indicators remained sluggish, putting pressure on Indian domestic metal realizations.",
-                "why_it_matters": "Lower international benchmark prices reduce export margins and invite competition from low-cost steel imports.",
-                "likely_impact": "Short-term margin squeeze for Tata Steel and JSW Steel; defensive positioning advised.",
-                "impact_sentiment": "NEGATIVE",
-                "source": "Metal Bulletin / S&P Platts",
-                "source_url": "https://spglobal.com",
-                "timestamp": f"{today_str}, 09:45 AM IST"
-            },
-
-            # 3. Important Individual Indian Stocks & Corporate Announcements
-            {
-                "id": "stock-1",
+                "id": "comp-1",
                 "section": "COMPANY_SPECIFIC",
-                "title": "Tata Motors Demerger Plan Gets Key Shareholder Clearance; Commercial & Passenger Segments to Split",
-                "symbols": ["TATAMOTORS"],
-                "what_happened": "Tata Motors received overwhelming majority shareholder approval for demerging its Commercial Vehicles (CV) and Passenger Vehicles (PV/EV) businesses into two independent listed entities.",
-                "why_it_matters": "Unlocks pure-play valuation multiples for the rapidly growing EV and Jaguar Land Rover (JLR) businesses, allowing dedicated capital allocation.",
-                "likely_impact": "Strong positive medium-term re-rating potential for Tata Motors equity shares.",
+                "title": "Reliance Industries Accelerates Green Energy & Retail Footprint with Multi-Billion Dollar Capex",
+                "symbols": ["RELIANCE"],
+                "what_happened": "RIL announced fast-tracked commissioning for its renewable energy gigafactories and continued digital services monetisation.",
+                "why_it_matters": "Diversifies earnings profile beyond traditional O2C business into high-growth clean energy and consumer tech segments.",
+                "likely_impact": "Positive long-term catalyst for Reliance stock and heavy weighting support for the Nifty 50 index.",
                 "impact_sentiment": "POSITIVE",
-                "source": "NSE Corporate Filings",
-                "source_url": "https://nseindia.com/companies-listing/corporate-filings",
-                "timestamp": f"{today_str}, 08:00 AM IST"
-            },
-            {
-                "id": "stock-2",
-                "section": "COMPANY_SPECIFIC",
-                "title": "Reliance Industries Completes Mega Energy Expansion; Jio Financial Deepens Consumer Credit Footprint",
-                "symbols": ["RELIANCE", "JIOFIN"],
-                "what_happened": "Reliance Industries commissioned its new green hydrogen pilot facility in Gujarat while Jio Financial launched secured lending against mutual funds and digital credit cards.",
-                "why_it_matters": "Expands non-telecom growth engines and monetizes high-margin green energy and retail fintech ecosystems.",
-                "likely_impact": "Stable positive earnings cushion for RIL; expands market cap valuation floor.",
-                "impact_sentiment": "POSITIVE",
-                "source": "BSE Corporate Announcements",
+                "source": "BSE Filings / Economic Times",
                 "source_url": "https://bseindia.com",
-                "timestamp": f"{today_str}, 08:20 AM IST"
-            },
-            {
-                "id": "stock-3",
-                "section": "COMPANY_SPECIFIC",
-                "title": "State Bank of India (SBI) Approves ₹10,000 Crore Infrastructure Bond Issuance",
-                "symbols": ["SBIN"],
-                "what_happened": "The executive committee of SBI approved raising up to ₹10,000 crore via long-term infrastructure bonds to finance critical national infrastructure and affordable housing projects.",
-                "why_it_matters": "Infrastructure bonds are exempt from regulatory CRR/SLR requirements, optimizing cost of funds and boosting credit growth margins.",
-                "likely_impact": "Positive for SBI's loan growth momentum and capital adequacy tiering.",
-                "impact_sentiment": "POSITIVE",
-                "source": "SBI Investor Relations / NSE",
-                "source_url": "https://sbi.co.in",
                 "timestamp": f"{today_str}, 08:45 AM IST"
             },
             {
-                "id": "stock-4",
+                "id": "comp-2",
                 "section": "COMPANY_SPECIFIC",
-                "title": "Larsen & Toubro Secures Mega ₹7,500 Crore Offshore & Renewable Energy Order",
-                "symbols": ["LT"],
-                "what_happened": "L&T's Hydrocarbon and Renewable Power business secured significant EPC contracts in the Middle East and domestic high-voltage grid corridors.",
-                "why_it_matters": "Expands order book visibility beyond ₹4.75 lakh crore, ensuring consistent double-digit revenue execution trajectory over the next 3-4 fiscal years.",
-                "likely_impact": "Positive for L&T stock; reinforces leadership in infrastructure execution.",
+                "title": "TCS & Infosys Win Multi-Year Cloud & GenAI Enterprise Transformation Deals in US and Europe",
+                "symbols": ["TCS", "INFY"],
+                "what_happened": "Indian IT bellwethers announced major multi-year digital modernization and generative AI contracts across banking and retail clients.",
+                "why_it_matters": "Signifies stabilizing discretionary tech spending in North America and steady total contract value (TCV) pipeline replenishment.",
+                "likely_impact": "Bullish momentum driver for CNX IT index and large-cap technology stocks.",
                 "impact_sentiment": "POSITIVE",
-                "source": "L&T Official Announcement",
-                "source_url": "https://larsentoubro.com",
-                "timestamp": f"{today_str}, 09:10 AM IST"
-            },
-
-            # 4. Global Markets, Commodities, FX & Bond Yields
-            {
-                "id": "global-1",
-                "section": "GLOBAL_COMMODITIES_FX",
-                "title": "Brent Crude Stabilizes Around $82/bbl Amid OPEC+ Production Restraint & Shipping Adjustments",
-                "symbols": ["BPCL", "IOC", "ONGC"],
-                "what_happened": "Brent crude futures settled near $82.40 per barrel following voluntary supply extension commitments by OPEC+ producers and steady Red Sea shipping flows.",
-                "why_it_matters": "Crude oil accounts for over 85% of India's petroleum import bill; oil stabilization under $85/bbl maintains benign domestic retail fuel prices and CAD stability.",
-                "likely_impact": "Neutral-to-positive for Indian Oil Marketing Companies (OMCs) like BPCL, IOC, HPCL; steady upstream realizations for ONGC.",
-                "impact_sentiment": "MIXED",
-                "source": "Reuters Commodities",
-                "source_url": "https://reuters.com/markets/commodities",
-                "timestamp": f"{today_str}, 07:30 AM IST"
+                "source": "Company Filings / Reuters",
+                "source_url": "https://tcs.com",
+                "timestamp": f"{today_str}, 09:05 AM IST"
             },
             {
-                "id": "global-2",
+                "id": "comm-1",
                 "section": "GLOBAL_COMMODITIES_FX",
-                "title": "Gold Trades Near Record Highs on Central Bank Accumulation; Indian Rupee Holds Steady at 83.95/USD",
-                "symbols": ["TITAN", "MUTHOOTFIN"],
-                "what_happened": "Spot gold traded near record levels ($2,650/oz) supported by central bank reserve diversification, while the Indian Rupee consolidated in a tight range against the US Dollar.",
-                "why_it_matters": "High gold prices boost loan-to-value collateral buffers for gold loan NBFCs (Muthoot Finance), but test retail jewellery consumption volume demand.",
-                "likely_impact": "Positive collateral buffer for Muthoot Finance; mixed volume elasticity for Titan jewellery retail.",
-                "impact_sentiment": "MIXED",
-                "source": "World Gold Council / RBI Reference Rate",
-                "source_url": "https://gold.org",
-                "timestamp": f"{today_str}, 07:50 AM IST"
-            },
-            {
-                "id": "global-3",
-                "section": "GLOBAL_COMMODITIES_FX",
-                "title": "US Wall Street Indices (S&P 500, Nasdaq) Rebound on Big Tech Artificial Intelligence Capex",
-                "symbols": ["NIFTY"],
-                "what_happened": "The S&P 500 advanced +0.6% and Nasdaq climbed +0.9% as semiconductor and hyperscale cloud providers reinforced multi-billion dollar AI infrastructure investment roadmaps.",
-                "why_it_matters": "GIFT Nifty futures tracked early gains (+65 points), providing an encouraging opening setup for the Indian cash trading session.",
-                "likely_impact": "Positive opening sentiment for Indian equities and tech export counters.",
+                "title": "Brent Crude Stabilizes Around $82/bbl; Indian Rupee Remains Resilient Amid RBI Interventions",
+                "symbols": ["NIFTY", "BPCL", "IOC"],
+                "what_happened": "Crude oil traded in a tight range as Middle East geopolitical risk premiums balanced against rising non-OPEC output; USD/INR held steady at 83.90.",
+                "why_it_matters": "Stable crude oil prices reduce India's import bill and anchor current account deficit (CAD) stability.",
+                "likely_impact": "Favorable for Oil Marketing Companies (OMCs), Paints, and Aviation counters.",
                 "impact_sentiment": "POSITIVE",
-                "source": "Bloomberg / Wall Street Journal",
+                "source": "Reuters / Bloomberg Commodities",
                 "source_url": "https://bloomberg.com",
                 "timestamp": f"{today_str}, 08:15 AM IST"
             },
-
-            # 5. Upcoming Key Events & Earnings to Watch
             {
                 "id": "event-1",
                 "section": "UPCOMING_EVENTS",
-                "title": "Calendar Ahead: US Non-Farm Payrolls, India CPI Inflation & Top Tier Q3 Corporate Earnings",
-                "symbols": ["NIFTY", "TCS", "HDFCBANK", "INFY"],
-                "what_happened": "Markets are tracking upcoming India CPI retail inflation data release on the 12th, followed by IT bellwether TCS quarterly results kickoff and US labor market updates.",
-                "why_it_matters": "Will set the tone for institutional earnings growth expectations, FII capital reallocation, and mid-cap valuation support.",
-                "likely_impact": "Anticipated uptick in implied volatility (India VIX); option buying and straddle/strangle strategies viable ahead of key data points.",
+                "title": "Market Watch: Key Inflation Data, Corporate Earnings Calendar and Weekly Options Expiry",
+                "symbols": ["NIFTY", "BANKNIFTY", "HDFCBANK", "INFY"],
+                "what_happened": "Traders are tracking upcoming domestic CPI and IIP data prints, alongside corporate earnings results and Thursday index expiry dynamics.",
+                "why_it_matters": "Triggers rapid adjustments in open interest concentrations, implied volatility surface, and dealer delta hedging flows.",
+                "likely_impact": "Elevated intraday volatility; Straddle and Iron Condor strategies attractive for non-directional option writers.",
                 "impact_sentiment": "UNCERTAIN",
-                "source": "Ministry of Statistics & Programme Implementation (MoSPI) / NSE",
+                "source": "MoSPI / NSE Derivatives Watch",
                 "source_url": "https://mospi.gov.in",
                 "timestamp": f"{today_str}, 09:30 AM IST"
             }
         ]
-
-        return {
-            "title": "Daily Market Intelligence & Macro News Briefing",
-            "last_updated": datetime.now().strftime("%d %B %Y, %I:%M %p IST"),
-            "macro_summary": "Indian markets exhibit resilient macro fundamentals supported by steady RBI policy, expanding manufacturing PMI (58.1), and controlled domestic inflation. Global cues remain constructive with softening US Treasury yields and range-bound crude oil prices ($82/bbl). Selective stock picking favored in IT, Capital Goods, and Private Banking.",
-            "total_items": len(news_items),
-            "items": news_items,
-            "disclaimer": "This news briefing is strictly informational and educational. Distinguishes verified facts from market speculation. This is not personalized financial or investment advice."
-        }

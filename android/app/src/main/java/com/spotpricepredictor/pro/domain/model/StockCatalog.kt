@@ -334,4 +334,64 @@ object StockCatalog {
 
         return orderedSet.take(limit).toList()
     }
+
+    val DEFAULT_SPOTS: Map<String, Double> = mapOf(
+        "NIFTY" to 22520.0,
+        "BANKNIFTY" to 55250.0,
+        "FINNIFTY" to 23600.0,
+        "MIDCPNIFTY" to 12300.0,
+        "SENSEX" to 73800.0,
+        "BANKEX" to 58900.0,
+        "NIFTYIT" to 38200.0,
+        "NIFTYAUTO" to 23400.0,
+        "NIFTYPHARMA" to 21600.0,
+        "NIFTYFMCG" to 57800.0,
+        "NIFTYMETAL" to 8900.0,
+        "NIFTYENERGY" to 39500.0,
+        "RELIANCE" to 1210.0,
+        "TCS" to 2156.0,
+        "HDFCBANK" to 707.0,
+        "INFY" to 1160.0,
+        "SBIN" to 959.0,
+        "TATAMOTORS" to 980.0,
+        "ITC" to 266.0,
+        "WIPRO" to 162.0,
+        "BAJFINANCE" to 960.0,
+        "LT" to 3703.0,
+        "BHARTIARTL" to 1805.0,
+        "MARUTI" to 11420.0,
+        "ZOMATO" to 260.0,
+        "TATASTEEL" to 173.0,
+        "ADANIENT" to 2634.0,
+        "TITAN" to 4410.0,
+        "ICICIBANK" to 1355.0,
+        "AXISBANK" to 1259.0,
+        "KOTAKBANK" to 1820.0,
+        "BEL" to 368.0,
+        "HAL" to 4655.0,
+        "SUNPHARMA" to 1760.0,
+        "MRF" to 125000.0,
+        "SUZLON" to 58.0,
+        "IREDA" to 220.0,
+        "COALINDIA" to 490.0,
+        "POWERGRID" to 330.0,
+        "NTPC" to 410.0,
+        "ONGC" to 300.0,
+        "IOC" to 175.0,
+        "BPCL" to 340.0,
+        "GAIL" to 230.0,
+        "DLF" to 860.0,
+        "EICHERMOT" to 4800.0,
+        "BAJAJ-AUTO" to 9800.0,
+        "HEROMOTOCO" to 5100.0,
+        "TVSMOTOR" to 2400.0
+    )
+
+    fun getDefaultSpot(symbol: String): Double {
+        val sym = symbol.trim().uppercase()
+        return DEFAULT_SPOTS[sym] ?: when {
+            sym.contains("NIFTY") || sym.contains("SENSEX") -> 22000.0
+            else -> 1000.0
+        }
+    }
 }
