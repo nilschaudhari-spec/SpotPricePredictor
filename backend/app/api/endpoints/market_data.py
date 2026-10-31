@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Query
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.services.market_data_fetcher import MarketDataFetcher
 from app.services.technical_analysis import TechnicalAnalysisEngine
+from app.services.securities_master import SecuritiesMaster
+from app.services.market_movers_service import MarketMoversService
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
 
@@ -287,22 +289,47 @@ ALL_SYMBOLS_CATALOG: List[Dict[str, Any]] = [
 # Quick map lookup for O(1) spot resolution
 CATALOG_MAP: Dict[str, Dict[str, Any]] = {item["symbol"]: item for item in ALL_SYMBOLS_CATALOG}
 
+@router.get("/gainers-losers")
+async def get_gainers_and_losers(
+    exchange: str = Query("ALL", description="Exchange: NSE, BSE, or ALL"),
+    limit: int = Query(10, ge=1, le=50, description="Max items per list")
+) -> Dict[str, Any]:
+    """
+    Returns Top Gainers and Top Losers for NSE, BSE, or combined ALL.
+    """
+    return MarketMoversService.get_movers(exchange=exchange, limit=limit)
+
 @router.get("/symbols")
-async def get_supported_symbols() -> Dict[str, Any]:
-    indices = [s for s in ALL_SYMBOLS_CATALOG if "Index" in s.get("sector", "")]
-    stocks = [s for s in ALL_SYMBOLS_CATALOG if "Index" not in s.get("sector", "")]
+async def get_supported_symbols(
+    exchange: Optional[str] = Query(None, description="Optional exchange filter: NSE, BSE, ALL")
+) -> Dict[str, Any]:
+    SecuritiesMaster.initialize()
+    all_stocks = SecuritiesMaster.get_all(exchange=exchange)
+    indices = [s for s in all_stocks if "Index" in s.get("sector", "")]
+    stocks = [s for s in all_stocks if "Index" not in s.get("sector", "")]
     return {
-        "indices": indices,
-        "stocks": stocks,
-        "total_supported": len(ALL_SYMBOLS_CATALOG)
+        "indices": indices[:50],
+        "stocks": stocks[:150],
+        "total_supported": len(all_stocks),
+        "exchange": exchange or "ALL"
     }
 
 @router.get("/search")
-async def search_symbols(q: str = Query("", description="Search query string")) -> List[Dict[str, Any]]:
+async def search_symbols(
+    q: str = Query("", description="Search query string"),
+    exchange: Optional[str] = Query(None, description="Exchange filter: NSE, BSE, ALL"),
+    limit: int = Query(30, ge=1, le=100)
+) -> List[Dict[str, Any]]:
     query = q.strip().upper()
     if not query:
         return []
 
+    # Search through SecuritiesMaster (covers all 4,133+ official NSE & BSE securities)
+    results = SecuritiesMaster.search(query=query, exchange=exchange, limit=limit)
+    if results:
+        return results
+
+    # Fallback to local catalog
     exact = []
     symbol_starts = []
     name_starts = []
@@ -333,8 +360,6 @@ async def search_symbols(q: str = Query("", description="Search query string")) 
                 seen.add(it["symbol"])
                 results.append(it)
 
-    # If the user typed an arbitrary ticker that is not directly in catalog,
-    # generate a dynamic custom result so 100% of equities are searchable & selectable
     if query not in seen and len(query) >= 2:
         dynamic_item = {
             "symbol": query,
@@ -345,7 +370,14 @@ async def search_symbols(q: str = Query("", description="Search query string")) 
         }
         results.append(dynamic_item)
 
-    return results[:20]
+    return results[:limit]
+
+@router.post("/sync-securities")
+async def sync_securities_catalog() -> Dict[str, Any]:
+    """
+    Syncs the latest official securities lists from NSE and BSE.
+    """
+    return SecuritiesMaster.sync_from_official_sources()
 
 @router.get("/ticker")
 async def get_default_ticker() -> List[Dict[str, Any]]:

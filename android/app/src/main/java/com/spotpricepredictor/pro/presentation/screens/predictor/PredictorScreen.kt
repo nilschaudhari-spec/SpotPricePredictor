@@ -1,6 +1,7 @@
 package com.spotpricepredictor.pro.presentation.screens.predictor
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,11 +13,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,14 +28,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.spotpricepredictor.pro.data.preferences.WatchlistManager
 import com.spotpricepredictor.pro.domain.model.ModelForecastBreakdown
 import com.spotpricepredictor.pro.domain.model.PredictionHorizon
 import com.spotpricepredictor.pro.domain.model.TrendDirection
 import com.spotpricepredictor.pro.presentation.components.AddStockDialog
 import com.spotpricepredictor.pro.presentation.components.AdvancedMetricsCard
 import com.spotpricepredictor.pro.presentation.components.DisclaimerBanner
+import com.spotpricepredictor.pro.presentation.components.InteractiveCandleChart
 import com.spotpricepredictor.pro.presentation.components.PredictionResultCard
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
@@ -53,10 +62,73 @@ fun PredictorScreen(
     val isFetchingQuote by viewModel.isFetchingQuote.collectAsState()
     val lastSyncTime by viewModel.lastSyncTime.collectAsState()
     val isAutoDetectActive by viewModel.isAutoDetectActive.collectAsState()
+    val is1msStreamingActive by viewModel.is1msStreamingActive.collectAsState()
+    val tickCounter by viewModel.tickCounter.collectAsState()
+    val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val categorySymbols by viewModel.categorySymbols.collectAsState()
+
+    val gainersLosers by viewModel.gainersLosers.collectAsState()
+    val isMoversLoading by viewModel.isMoversLoading.collectAsState()
+    val moversExchange by viewModel.moversExchange.collectAsState()
+    val moversTab by viewModel.moversTab.collectAsState()
+
+    val showChartModal by viewModel.showChartModal.collectAsState()
+    val chartData by viewModel.chartData.collectAsState()
+    val isChartLoading by viewModel.isChartLoading.collectAsState()
 
     var showServerDialog by remember { mutableStateOf(false) }
     var showAddStockDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    if (showChartModal) {
+        Dialog(
+            onDismissRequest = { viewModel.closeChartModal() },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DeepObsidian.copy(alpha = 0.96f))
+                    .padding(16.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$selectedSymbol TECHNICAL CHART & INDICATORS",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        IconButton(onClick = { viewModel.closeChartModal() }) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = TextPrimary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (isChartLoading) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = ElectricCyan)
+                        }
+                    } else if (chartData != null) {
+                        InteractiveCandleChart(
+                            chartData = chartData!!,
+                            onIntervalChange = { viewModel.changeChartInterval(it) },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "No Chart Data Available", color = TextSecondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     if (showServerDialog) {
         ServerSettingsDialog(
@@ -123,19 +195,36 @@ fun PredictorScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // 1. Symbol Selection Chips + Add Stock
+        // 1. Symbol Selection Chips + Category Selector + Add Stock
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "SELECT ASSET / INDEX",
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextSecondary,
-                letterSpacing = 1.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "SELECT ASSET / SCRIPT",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary,
+                    letterSpacing = 1.sp
+                )
+                Box(
+                    modifier = Modifier
+                        .clickable { viewModel.toggle1msStreaming() }
+                        .background(if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.15f) else AmberWarning.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .border(0.6.dp, if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.4f) else AmberWarning.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (is1msStreamingActive) "⚡ 1ms LIVE TICKS (#$tickCounter)" else "PAUSED",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (is1msStreamingActive) NeonEmerald else AmberWarning
+                    )
+                }
+            }
+
             Text(
                 text = "+ ADD STOCK",
                 fontSize = 11.sp,
@@ -144,27 +233,75 @@ fun PredictorScreen(
                 modifier = Modifier.clickable { showAddStockDialog = true }
             )
         }
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Script Categories (ALL, INDICES, COMMODITIES, BANKING, IT, AUTO, ENERGY, FMCG, METALS, CUSTOM)
+        val categories = listOf("ALL", "INDICES", "COMMODITIES", "BANKING", "IT", "AUTO", "ENERGY", "FMCG", "METALS", "CUSTOM")
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            items(categories) { cat ->
+                val isSelected = cat.equals(selectedCategory, ignoreCase = true)
+                Box(
+                    modifier = Modifier
+                        .clickable { viewModel.setCategory(cat) }
+                        .background(
+                            if (isSelected) ElectricCyan.copy(alpha = 0.2f) else SurfaceDark,
+                            RoundedCornerShape(6.dp)
+                        )
+                        .border(
+                            1.dp,
+                            if (isSelected) ElectricCyan else CardBorder,
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = cat,
+                        color = if (isSelected) ElectricCyan else TextSecondary,
+                        fontSize = 10.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
+        val currentSymbolsList = if (categorySymbols.isNotEmpty()) categorySymbols else supportedSymbols
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(supportedSymbols) { symbol ->
+            items(currentSymbolsList) { symbol ->
                 val isSelected = symbol == selectedSymbol
+                val isCustom = symbol !in WatchlistManager.DEFAULT_SYMBOLS
                 Box(
                     modifier = Modifier
                         .background(
                             if (isSelected) ElectricCyan else CardBackground,
                             RoundedCornerShape(8.dp)
                         )
-                        .border(1.dp, if (isSelected) ElectricCyan else CardBorder, RoundedCornerShape(8.dp))
+                        .border(
+                            1.dp,
+                            if (isSelected) ElectricCyan else if (isCustom) RoyalViolet.copy(alpha = 0.6f) else CardBorder,
+                            RoundedCornerShape(8.dp)
+                        )
                         .clickable { viewModel.onSymbolSelected(symbol) }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = symbol,
-                        color = if (isSelected) DeepObsidian else TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isCustom) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = if (isSelected) DeepObsidian else RoyalViolet,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Text(
+                            text = symbol,
+                            color = if (isSelected) DeepObsidian else TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
 
@@ -190,6 +327,303 @@ fun PredictorScreen(
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
+                    }
+                }
+            }
+        }
+
+        // Custom Stock Active Status Banner
+        val isCustomActive = selectedSymbol !in WatchlistManager.DEFAULT_SYMBOLS
+        if (isCustomActive) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Card(
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = RoyalViolet.copy(alpha = 0.12f)),
+                border = BorderStroke(1.dp, RoyalViolet.copy(alpha = 0.45f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(RoyalViolet.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "CUSTOM STOCK",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RoyalViolet
+                            )
+                        }
+                        Text(
+                            text = "$selectedSymbol • AI Quant Ensemble Ready",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    }
+
+                    TextButton(
+                        onClick = { viewModel.removeCustomStock(selectedSymbol) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Text(
+                            text = "Remove",
+                            fontSize = 11.sp,
+                            color = CrimsonAlert,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // MARKET TOP GAINERS & LOSERS (NSE & BSE)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+            border = BorderStroke(1.dp, CardBorder)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                // Header with Exchange Toggles & Refresh
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "🔥 TOP GAINERS & LOSERS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = TextPrimary,
+                                letterSpacing = 0.5.sp
+                            )
+                            if (isMoversLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = ElectricCyan)
+                            }
+                        }
+                        Text(
+                            text = "Live market momentum scanner • Tap to predict",
+                            fontSize = 9.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // Exchange Selector (NSE vs BSE)
+                    Row(
+                        modifier = Modifier
+                            .background(CardBackground, RoundedCornerShape(8.dp))
+                            .border(0.8.dp, CardBorder, RoundedCornerShape(8.dp))
+                            .padding(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        listOf("NSE", "BSE").forEach { ex ->
+                            val isExSelected = ex.equals(moversExchange, ignoreCase = true)
+                            Box(
+                                modifier = Modifier
+                                    .clickable { viewModel.setMoversExchange(ex) }
+                                    .background(
+                                        if (isExSelected) ElectricCyan else Color.Transparent,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = if (ex == "NSE") "🇮🇳 NSE" else "🏛️ BSE",
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isExSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                    color = if (isExSelected) DeepObsidian else TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Movers Tab (GAINERS vs LOSERS)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.setMoversTab("GAINERS") }
+                            .background(
+                                if (moversTab == "GAINERS") NeonEmerald.copy(alpha = 0.2f) else CardBackground,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (moversTab == "GAINERS") NeonEmerald else CardBorder,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🟢 TOP GAINERS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (moversTab == "GAINERS") NeonEmerald else TextSecondary
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.setMoversTab("LOSERS") }
+                            .background(
+                                if (moversTab == "LOSERS") CrimsonAlert.copy(alpha = 0.2f) else CardBackground,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (moversTab == "LOSERS") CrimsonAlert else CardBorder,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🔴 TOP LOSERS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (moversTab == "LOSERS") CrimsonAlert else TextSecondary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Cards List
+                val moversList = if (moversTab == "GAINERS") {
+                    gainersLosers?.gainers ?: emptyList()
+                } else {
+                    gainersLosers?.losers ?: emptyList()
+                }
+
+                if (moversList.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Loading $moversExchange ${moversTab.lowercase()}...",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(moversList) { mover ->
+                            val isCurrentSelected = mover.symbol.equals(selectedSymbol, ignoreCase = true)
+                            val moverColor = if (mover.isPositive) NeonEmerald else CrimsonAlert
+                            val arrow = if (mover.isPositive) "▲ +" else "▼ "
+
+                            Card(
+                                modifier = Modifier
+                                    .width(148.dp)
+                                    .clickable { viewModel.onSymbolSelected(mover.symbol) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                                border = BorderStroke(
+                                    if (isCurrentSelected) 1.5.dp else 1.dp,
+                                    if (isCurrentSelected) ElectricCyan else moverColor.copy(alpha = 0.35f)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = mover.symbol,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isCurrentSelected) ElectricCyan else TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .background(
+                                                    if (mover.exchange == "BSE") AmberWarning.copy(alpha = 0.2f) else ElectricCyan.copy(alpha = 0.2f),
+                                                    RoundedCornerShape(4.dp)
+                                                )
+                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = mover.exchange,
+                                                fontSize = 8.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = if (mover.exchange == "BSE") AmberWarning else ElectricCyan
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    Text(
+                                        text = mover.name,
+                                        fontSize = 9.sp,
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "₹${"%,.2f".format(mover.spotPrice)}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .background(moverColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                .border(0.6.dp, moverColor.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = "$arrow${mover.changePercent}%",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = moverColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -268,7 +702,6 @@ fun PredictorScreen(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(end = 4.dp)
                 ) {
-                    // Quick Action: Auto-Detect Live Spot Price
                     Box(
                         modifier = Modifier
                             .background(ElectricCyan.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
@@ -312,6 +745,34 @@ fun PredictorScreen(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             shape = RoundedCornerShape(12.dp)
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Open Graph & Apply Indicators Button
+        Button(
+            onClick = { viewModel.openChartModal() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(38.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ElectricCyan.copy(alpha = 0.15f),
+                contentColor = ElectricCyan
+            ),
+            border = BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.4f))
+        ) {
+            Icon(
+                imageVector = Icons.Default.AutoGraph,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "View $selectedSymbol Interactive Graph & Technical Call" + (if (chartData != null) " (${chartData!!.technicalCall})" else ""),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -366,95 +827,84 @@ fun PredictorScreen(
                         .fillMaxWidth()
                         .padding(14.dp)
                 ) {
+                    Text(
+                        text = "CUSTOM HORIZON DURATION (MINUTES)",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = RoyalViolet,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "CUSTOM HORIZON DURATION",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                        OutlinedTextField(
+                            value = customMinutes,
+                            onValueChange = { viewModel.onCustomMinutesChanged(it) },
+                            label = { Text("Minutes (1 - 480)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = RoyalViolet,
+                                unfocusedBorderColor = CardBorder,
+                                focusedContainerColor = CardBackground,
+                                unfocusedContainerColor = CardBackground,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(10.dp)
                         )
 
-                        val currentMinsInt = customMinutes.toIntOrNull() ?: 45
-                        val displayHours = if (currentMinsInt >= 60) " (%.1f hrs)".format(currentMinsInt / 60.0) else ""
                         Text(
-                            text = "$currentMinsInt Mins$displayHours",
-                            fontSize = 11.sp,
+                            text = "${if (customMinutes.isNotBlank()) customMinutes else "0"} min",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = RoyalViolet
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = customMinutes,
-                        onValueChange = { viewModel.onCustomMinutesChanged(it) },
-                        label = { Text("Custom Prediction Duration (Minutes)", fontSize = 11.sp) },
-                        placeholder = { Text("e.g. 10, 20, 45, 90, 120, 240", fontSize = 11.sp) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RoyalViolet,
-                            unfocusedBorderColor = CardBorder,
-                            focusedContainerColor = CardBackground,
-                            unfocusedContainerColor = CardBackground,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // Quick Preset Chips (20m, 45m, 90m, 120m, 180m, 240m)
                     Text(
-                        text = "QUICK DURATION PRESETS",
+                        text = "QUICK PRESETS",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextSecondary,
                         letterSpacing = 0.5.sp
                     )
-
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        listOf(10, 20, 45, 90, 120, 180, 240).forEach { mins ->
-                            val isCurrent = (customMinutes.toIntOrNull() ?: 45) == mins
+                    val presets = listOf(20, 45, 90, 120, 180, 240)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(presets) { preset ->
+                            val isPresetSelected = customMinutes == preset.toString()
                             Box(
                                 modifier = Modifier
-                                    .weight(1f)
                                     .background(
-                                        if (isCurrent) RoyalViolet else CardBackground,
+                                        if (isPresetSelected) RoyalViolet else CardBackground,
                                         RoundedCornerShape(6.dp)
                                     )
-                                    .border(1.dp, if (isCurrent) RoyalViolet else CardBorder, RoundedCornerShape(6.dp))
-                                    .clickable { viewModel.onCustomMinutesChanged(mins.toString()) }
-                                    .padding(vertical = 6.dp),
-                                contentAlignment = Alignment.Center
+                                    .border(
+                                        1.dp,
+                                        if (isPresetSelected) RoyalViolet else CardBorder,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { viewModel.onCustomMinutesChanged(preset.toString()) }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = "${mins}m",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCurrent) Color.White else TextSecondary
+                                    text = "${preset}m",
+                                    color = if (isPresetSelected) Color.White else TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "AI quant engine will simulate multi-model price pathing for exactly ${if (customMinutes.isNotBlank()) customMinutes else "45"} minutes.",
-                        fontSize = 10.sp,
-                        color = TextMuted
-                    )
                 }
             }
         }
@@ -463,7 +913,7 @@ fun PredictorScreen(
 
         // 4. Trend Direction Selection
         Text(
-            text = "TREND BIAS / AUTO-DETECT",
+            text = "MARKET TREND BIAS",
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             color = TextSecondary,
@@ -474,19 +924,29 @@ fun PredictorScreen(
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(TrendDirection.values()) { trend ->
                 val isSelected = trend == selectedTrend
+                val trendColor = when (trend) {
+                    TrendDirection.STRONG_BULLISH, TrendDirection.BULLISH -> NeonEmerald
+                    TrendDirection.STRONG_BEARISH, TrendDirection.BEARISH -> CrimsonAlert
+                    TrendDirection.AUTO -> ElectricCyan
+                    TrendDirection.SIDEWAYS -> AmberWarning
+                }
                 Box(
                     modifier = Modifier
                         .background(
-                            if (isSelected) NeonEmerald.copy(alpha = 0.25f) else CardBackground,
+                            if (isSelected) trendColor.copy(alpha = 0.2f) else CardBackground,
                             RoundedCornerShape(8.dp)
                         )
-                        .border(1.dp, if (isSelected) NeonEmerald else CardBorder, RoundedCornerShape(8.dp))
+                        .border(
+                            1.dp,
+                            if (isSelected) trendColor else CardBorder,
+                            RoundedCornerShape(8.dp)
+                        )
                         .clickable { viewModel.onTrendSelected(trend) }
                         .padding(horizontal = 12.dp, vertical = 7.dp)
                 ) {
                     Text(
                         text = trend.label,
-                        color = if (isSelected) NeonEmerald else TextPrimary,
+                        color = if (isSelected) trendColor else TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 11.sp
                     )
@@ -506,7 +966,7 @@ fun PredictorScreen(
             shape = RoundedCornerShape(12.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.TrendingUp,
+                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                 contentDescription = null,
                 tint = DeepObsidian
             )

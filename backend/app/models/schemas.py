@@ -117,6 +117,21 @@ class ModelForecastBreakdown(BaseModel):
     lstm_spot: float
     price_action_spot: float
 
+class StrategyPredictionItem(BaseModel):
+    strategy_name: str
+    predicted_spot: float
+    target_price: float
+    stop_loss: float
+    signal: str # "BUY", "SELL", "HOLD"
+    confidence_pct: float
+    rationale: str
+
+class StrategySignalItem(BaseModel):
+    name: str
+    signal: str # "BUY", "SELL", "NEUTRAL"
+    strength: float = 80.0
+    rationale: str
+
 class PredictionResponse(BaseModel):
     symbol: str
     current_spot: float
@@ -139,6 +154,9 @@ class PredictionResponse(BaseModel):
     strategy_rationale: str
     advanced_analysis: AdvancedAnalytics
     model_breakdown: ModelForecastBreakdown
+    action_recommendation: Optional[str] = "BUY" # "BUY", "HOLD", or "SELL"
+    action_rationale: Optional[str] = None
+    various_strategies: List[StrategyPredictionItem] = []
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     disclaimer: str = (
         "PROBABILISTIC FORECAST: Future market prices involve uncertainty. "
@@ -163,3 +181,117 @@ class OptionChainResponse(BaseModel):
     selected_expiry_date: Optional[str] = None
     available_expiries: List[ExpiryInfo] = []
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TradeAction(str, Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+
+class InstrumentType(str, Enum):
+    EQUITY = "EQUITY"
+    OPTIONS = "OPTIONS"
+    FUTURES = "FUTURES"
+
+class SignalCategory(str, Enum):
+    INDEX = "INDEX"
+    EQUITY = "EQUITY"
+
+class SignalStrength(str, Enum):
+    STRONG_BUY = "STRONG BUY"
+    BUY = "BUY"
+    STRONG_SELL = "STRONG SELL"
+    SELL = "SELL"
+    NEUTRAL = "NEUTRAL"
+
+class TechnicalSummary(BaseModel):
+    trend: str
+    rsi: float
+    rsi_signal: str
+    macd_status: str
+    ema_alignment: str
+    supertrend: str
+    vwap_signal: str
+    bollinger_signal: str
+    support_level: float
+    resistance_level: float
+    oi_pcr: Optional[float] = None
+    max_pain: Optional[float] = None
+    rationale: str
+
+class FNODetails(BaseModel):
+    contract_name: str
+    derivative_type: str # "OPTIONS" or "FUTURES"
+    option_type: Optional[str] = None # "CE", "PE"
+    strike_price: Optional[float] = None
+    expiry_date: str
+    premium_entry: float
+    premium_target: float
+    premium_stop_loss: float
+    lot_size: int
+    strategy_type: str
+
+class TradeSuggestion(BaseModel):
+    id: str
+    symbol: str
+    name: str
+    category: SignalCategory
+    instrument_type: InstrumentType
+    action: TradeAction
+    signal_strength: SignalStrength
+    current_price: float
+    entry_price: float
+    target_1: float
+    target_2: float
+    stop_loss: float
+    risk_reward_ratio: str
+    potential_gain_pct: float
+    timeframe: str # "Intraday (15-60m)" or "Swing (1-3 Days)"
+    confidence_pct: float
+    fno_details: Optional[FNODetails] = None
+    technical_analysis: TechnicalSummary
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TradeSuggestionsResponse(BaseModel):
+    suggestions: List[TradeSuggestion]
+    market_sentiment: str
+    total_signals: int
+    disclaimer: str = (
+        "TRADE RECOMMENDATION DISCLAIMER: Market suggestions are derived from statistical quantitative "
+        "and technical analysis algorithms. Derivatives and equities trading involve financial risk. "
+        "Always adhere to strict risk management and position sizing."
+    )
+
+class CandleData(BaseModel):
+    timestamp: int
+    time_str: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    ema_20: Optional[float] = None
+    ema_50: Optional[float] = None
+    sma_200: Optional[float] = None
+    vwap: Optional[float] = None
+    bb_upper: Optional[float] = None
+    bb_middle: Optional[float] = None
+    bb_lower: Optional[float] = None
+    supertrend: Optional[float] = None
+    supertrend_direction: Optional[str] = None # "UP" or "DOWN"
+    rsi: Optional[float] = None
+    macd: Optional[float] = None
+    macd_signal: Optional[float] = None
+    macd_hist: Optional[float] = None
+
+class ChartDataResponse(BaseModel):
+    symbol: str
+    interval: str
+    spot_price: float
+    change: float
+    change_pct: float
+    candles: List[CandleData]
+    technical_call: Optional[str] = "BUY" # STRONG BUY, BUY, NEUTRAL, SELL, STRONG SELL
+    technical_score: Optional[float] = 0.0
+    target_price: Optional[float] = None
+    stop_loss: Optional[float] = None
+    strategy_signals: List[StrategySignalItem] = []
+

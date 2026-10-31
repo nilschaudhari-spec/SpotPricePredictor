@@ -39,24 +39,45 @@ fun AddStockDialog(
     onAddSymbol: (String) -> Unit
 ) {
     var symbolInput by remember { mutableStateOf("") }
+    var selectedExchangeTab by remember { mutableStateOf("ALL") }
+    var selectedCategoryTab by remember { mutableStateOf("ALL") }
     val trimmedInput = symbolInput.trim()
     val isMinQueryReached = trimmedInput.isNotEmpty()
 
-    val searchResults = remember(trimmedInput) {
+    val searchResults = remember(trimmedInput, selectedExchangeTab, selectedCategoryTab) {
         if (isMinQueryReached) {
-            StockCatalog.search(trimmedInput)
+            StockCatalog.search(trimmedInput, exchange = selectedExchangeTab)
         } else {
-            emptyList()
+            val exFiltered = if (selectedExchangeTab == "ALL") {
+                StockCatalog.STOCKS
+            } else {
+                StockCatalog.STOCKS.filter { it.exchange.equals(selectedExchangeTab, ignoreCase = true) }
+            }
+
+            if (selectedCategoryTab != "ALL") {
+                when (selectedCategoryTab.uppercase()) {
+                    "INDICES" -> exFiltered.filter { it.sector.contains("Index", ignoreCase = true) }
+                    "COMMODITIES" -> exFiltered.filter {
+                        it.sector.contains("Commodities", ignoreCase = true) ||
+                        it.sector.contains("Precious Metals", ignoreCase = true) ||
+                        it.sector.contains("Base Metals", ignoreCase = true) ||
+                        it.sector.contains("Currency", ignoreCase = true) ||
+                        it.sector.contains("Crypto", ignoreCase = true)
+                    }
+                    "BANKING" -> exFiltered.filter { it.sector.contains("Bank", ignoreCase = true) || it.sector.contains("Financial", ignoreCase = true) || it.sector.contains("NBFC", ignoreCase = true) }
+                    "IT" -> exFiltered.filter { it.sector.contains("IT", ignoreCase = true) || it.sector.contains("Tech", ignoreCase = true) || it.sector.contains("Software", ignoreCase = true) }
+                    "AUTO" -> exFiltered.filter { it.sector.contains("Auto", ignoreCase = true) }
+                    "ENERGY" -> exFiltered.filter { it.sector.contains("Energy", ignoreCase = true) || it.sector.contains("Oil", ignoreCase = true) || it.sector.contains("Power", ignoreCase = true) || it.sector.contains("Gas", ignoreCase = true) }
+                    "FMCG" -> exFiltered.filter { it.sector.contains("FMCG", ignoreCase = true) || it.sector.contains("Retail", ignoreCase = true) }
+                    "METALS" -> exFiltered.filter { it.sector.contains("Metal", ignoreCase = true) || it.sector.contains("Mining", ignoreCase = true) }
+                    else -> exFiltered
+                }
+            } else {
+                exFiltered
+            }
         }
     }
 
-
-    val popularSuggestions = listOf(
-        "SBIN", "TATAMOTORS", "RELIANCE", "TCS", "INFY", "HDFCBANK",
-        "ICICIBANK", "ITC", "WIPRO", "BAJFINANCE", "MARUTI",
-        "AXISBANK", "LT", "BHARTIARTL", "TITAN", "KOTAKBANK",
-        "ADANIENT", "SUNPHARMA", "ZOMATO"
-    )
 
     fun submit() {
         val finalSymbol = trimmedInput.uppercase()
@@ -169,142 +190,150 @@ fun AddStockDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Autocomplete Result Section
-                if (isMinQueryReached) {
-                    if (searchResults.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "MATCHING STOCKS (${searchResults.size})",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextSecondary,
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = "TAP TO SELECT & ADD",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = ElectricCyan,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
+                // Exchange Filter Row (ALL, NSE, BSE)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "EXCHANGE:",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary,
+                        letterSpacing = 0.5.sp
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 230.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            items(searchResults, key = { it.symbol }) { stock ->
-                                StockResultItem(
-                                    stock = stock,
-                                    onSelect = {
-                                        onAddSymbol(stock.symbol)
-                                        onDismiss()
-                                    }
-                                )
-                            }
-                        }
-                    } else {
-                        // Empty match state
+                    listOf("ALL" to "ALL", "NSE" to "🇮🇳 NSE", "BSE" to "🏛️ BSE").forEach { (code, label) ->
+                        val isExSelected = code.equals(selectedExchangeTab, ignoreCase = true)
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .background(SurfaceDark, RoundedCornerShape(10.dp))
-                                .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = AmberWarning,
-                                    modifier = Modifier.size(20.dp)
+                                .clickable { selectedExchangeTab = code }
+                                .background(
+                                    if (isExSelected) ElectricCyan.copy(alpha = 0.25f) else SurfaceDark,
+                                    RoundedCornerShape(6.dp)
                                 )
-                                Column {
-                                    Text(
-                                        text = "No catalog match for \"$trimmedInput\"",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary
-                                    )
-                                    Text(
-                                        text = "You can still add \"${trimmedInput.uppercase()}\" as a custom symbol below.",
-                                        fontSize = 11.sp,
-                                        color = TextSecondary
-                                    )
+                                .border(
+                                    1.dp,
+                                    if (isExSelected) ElectricCyan else CardBorder,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 10.sp,
+                                fontWeight = if (isExSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                color = if (isExSelected) ElectricCyan else TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick Sector / Category Filter Chips
+                val categories = listOf("ALL", "INDICES", "COMMODITIES", "BANKING", "IT", "AUTO", "ENERGY", "FMCG", "METALS")
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    items(categories) { cat ->
+                        val isSelected = cat.equals(selectedCategoryTab, ignoreCase = true)
+                        Box(
+                            modifier = Modifier
+                                .clickable { selectedCategoryTab = cat }
+                                .background(
+                                    if (isSelected) ElectricCyan.copy(alpha = 0.2f) else SurfaceDark,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) ElectricCyan else CardBorder,
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = cat,
+                                color = if (isSelected) ElectricCyan else TextSecondary,
+                                fontSize = 10.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Result List Section
+                if (searchResults.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isMinQueryReached) "MATCHING STOCKS (${searchResults.size})" else "AVAILABLE SCRIPTS (${searchResults.size})",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextSecondary,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = "TAP TO SELECT & ADD",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElectricCyan,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 240.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(searchResults, key = { it.symbol }) { stock ->
+                            StockResultItem(
+                                stock = stock,
+                                onSelect = {
+                                    onAddSymbol(stock.symbol)
+                                    onDismiss()
                                 }
-                            }
+                            )
                         }
                     }
                 } else {
-                    // Guidance info box when fewer than 3 characters
+                    // Empty match state
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(SurfaceDark.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-                            .border(1.dp, CardBorder.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                            .background(SurfaceDark, RoundedCornerShape(10.dp))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(12.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Search,
+                                imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                tint = ElectricCyanDim,
-                                modifier = Modifier.size(16.dp)
+                                tint = AmberWarning,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Text(
-                                text = "Type any company name or ticker to see instant autocomplete suggestions (e.g. 'LT', 'TAT', 'REL', 'SBI', 'INF', 'SUZLON').",
-                                fontSize = 11.sp,
-                                color = TextSecondary,
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = "POPULAR INDIAN EQUITIES",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextSecondary,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(popularSuggestions) { sym ->
-                            Box(
-                                modifier = Modifier
-                                    .background(SurfaceDark, RoundedCornerShape(8.dp))
-                                    .border(1.dp, CardBorder, RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        symbolInput = sym
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
+                            Column {
                                 Text(
-                                    text = sym,
-                                    fontSize = 11.sp,
+                                    text = "No catalog match for \"$trimmedInput\"",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = ElectricCyan
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "You can still add \"${trimmedInput.uppercase()}\" as a custom symbol below.",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary
                                 )
                             }
                         }

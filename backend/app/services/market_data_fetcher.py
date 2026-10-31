@@ -19,6 +19,15 @@ class MarketDataFetcher:
         "NIFTY": {"spot": 22520.0, "step": 50, "iv": 14.2, "lot": 25},
         "BANKNIFTY": {"spot": 55250.0, "step": 100, "iv": 16.5, "lot": 15},
         "FINNIFTY": {"spot": 23600.0, "step": 50, "iv": 14.8, "lot": 40},
+        "MIDCPNIFTY": {"spot": 12200.0, "step": 25, "iv": 15.0, "lot": 75},
+        "SENSEX": {"spot": 74500.0, "step": 100, "iv": 13.8, "lot": 10},
+        "BANKEX": {"spot": 61200.0, "step": 100, "iv": 16.0, "lot": 15},
+        "CRUDEOIL": {"spot": 5950.0, "step": 50, "iv": 28.0, "lot": 100},
+        "GOLD": {"spot": 78600.0, "step": 100, "iv": 14.5, "lot": 100},
+        "SILVER": {"spot": 94800.0, "step": 100, "iv": 22.0, "lot": 30},
+        "NATURALGAS": {"spot": 245.0, "step": 5, "iv": 38.0, "lot": 1250},
+        "COPPER": {"spot": 820.0, "step": 10, "iv": 20.0, "lot": 2500},
+        "USDINR": {"spot": 84.10, "step": 0.25, "iv": 5.2, "lot": 1000},
         "RELIANCE": {"spot": 1170.0, "step": 20, "iv": 19.5, "lot": 250},
         "TCS": {"spot": 2156.0, "step": 20, "iv": 17.2, "lot": 175},
         "HDFCBANK": {"spot": 707.0, "step": 10, "iv": 18.0, "lot": 550},
@@ -51,6 +60,26 @@ class MarketDataFetcher:
             "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
             "MIDCPNIFTY": "^NSEMDCP50",
             "SENSEX": "^BSESN",
+            "BANKEX": "BSE-BANK.BO",
+            "NIFTYIT": "^CNXIT",
+            "NIFTYAUTO": "^CNXAUTO",
+            "NIFTYPHARMA": "^CNXPHARMA",
+            "NIFTYFMCG": "^CNXFMCG",
+            "NIFTYMETAL": "^CNXMETAL",
+            "NIFTYENERGY": "^CNXENERGY",
+            "NIFTYINFRA": "^CNXINFRA",
+            "NIFTYREALTY": "^CNXREALTY",
+            "CRUDEOIL": "CL=F",
+            "GOLD": "GC=F",
+            "SILVER": "SI=F",
+            "NATURALGAS": "NG=F",
+            "COPPER": "HG=F",
+            "USDINR": "INR=X",
+            "EURINR": "EURINR=X",
+            "GBPINR": "GBPINR=X",
+            "JPYINR": "JPYINR=X",
+            "BTC": "BTC-USD",
+            "ETH": "ETH-USD"
         }
         ticker = mapping.get(clean_sym, f"{clean_sym}.NS")
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -86,11 +115,16 @@ class MarketDataFetcher:
         default_info = cls.TICKER_DEFAULTS.get(sym)
         if not default_info:
             try:
-                from app.api.endpoints.market_data import CATALOG_MAP
-                cat_item = CATALOG_MAP.get(sym)
-                spot_val = float(cat_item["default_spot"]) if cat_item else 1000.0
+                from app.services.securities_master import SecuritiesMaster
+                sec_item = SecuritiesMaster.get_stock(sym)
+                spot_val = float(sec_item.get("default_spot", 1000.0)) if sec_item else 1000.0
             except Exception:
-                spot_val = 1000.0
+                try:
+                    from app.api.endpoints.market_data import CATALOG_MAP
+                    cat_item = CATALOG_MAP.get(sym)
+                    spot_val = float(cat_item["default_spot"]) if cat_item else 1000.0
+                except Exception:
+                    spot_val = 1000.0
             default_info = {"spot": spot_val, "step": 20, "iv": 18.0, "lot": 100}
 
         if not live_price:

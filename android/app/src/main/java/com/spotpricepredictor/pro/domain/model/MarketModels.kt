@@ -94,3 +94,20 @@ data class OptionChainData(
     val selectedExpiryDate: String? = null,
     val availableExpiries: List<ExpiryInfo> = emptyList()
 )
+
+data class MarketMoverItem(
+    val symbol: String,
+    val name: String,
+    val spotPrice: Double,
+    val change: Double,
+    val changePercent: Double,
+    val exchange: String = "NSE",
+    val isPositive: Boolean = true
+)
+
+data class GainersLosersData(
+    val exchange: String = "NSE",
+    val timestamp: String = "",
+    val gainers: List<MarketMoverItem> = emptyList(),
+    val losers: List<MarketMoverItem> = emptyList()
+)

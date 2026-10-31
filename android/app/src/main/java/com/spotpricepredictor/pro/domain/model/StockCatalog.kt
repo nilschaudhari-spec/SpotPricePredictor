@@ -16,6 +16,25 @@ object StockCatalog {
         StockItem("NIFTYFMCG", "Nifty FMCG Sector Index", "FMCG Index"),
         StockItem("NIFTYMETAL", "Nifty Metal Sector Index", "Metal Index"),
         StockItem("NIFTYENERGY", "Nifty Energy Sector Index", "Energy Index"),
+        StockItem("NIFTYINFRA", "Nifty Infrastructure Index", "Infra Index"),
+        StockItem("NIFTYREALTY", "Nifty Realty Sector Index", "Realty Index"),
+
+        // MCX Commodities & Precious Metals
+        StockItem("CRUDEOIL", "Crude Oil (MCX/NYMEX)", "Commodities", "MCX"),
+        StockItem("GOLD", "Gold 999 10g (MCX/COMEX)", "Precious Metals", "MCX"),
+        StockItem("SILVER", "Silver 1kg (MCX/COMEX)", "Precious Metals", "MCX"),
+        StockItem("NATURALGAS", "Natural Gas (MCX/NYMEX)", "Commodities", "MCX"),
+        StockItem("COPPER", "Copper (MCX)", "Base Metals", "MCX"),
+        StockItem("ZINC", "Zinc (MCX)", "Base Metals", "MCX"),
+        StockItem("ALUMINIUM", "Aluminium (MCX)", "Base Metals", "MCX"),
+
+        // Currencies & Crypto
+        StockItem("USDINR", "US Dollar / Indian Rupee", "Currency FX", "NSE"),
+        StockItem("EURINR", "Euro / Indian Rupee", "Currency FX", "NSE"),
+        StockItem("GBPINR", "British Pound / Indian Rupee", "Currency FX", "NSE"),
+        StockItem("JPYINR", "Japanese Yen / Indian Rupee", "Currency FX", "NSE"),
+        StockItem("BTC", "Bitcoin / USD", "Crypto", "BINANCE"),
+        StockItem("ETH", "Ethereum / USD", "Crypto", "BINANCE"),
 
         // Tata Group
         StockItem("TATAMOTORS", "Tata Motors Limited", "Automobile"),
@@ -278,19 +297,60 @@ object StockCatalog {
         StockItem("GODREJPROP", "Godrej Properties Limited", "Residential Real Estate"),
         StockItem("OBEROREALTY", "Oberoi Realty Limited", "Premium Real Estate"),
         StockItem("LODHA", "Macrotech Developers Limited (Lodha)", "Real Estate"),
-        StockItem("PRESTIGE", "Prestige Estates Projects Limited", "Real Estate & Hospitality")
+        StockItem("PRESTIGE", "Prestige Estates Projects Limited", "Real Estate & Hospitality"),
+
+        // BSE Eligible Stocks (BSE India official eligible.xls)
+        StockItem("500325", "Reliance Industries Ltd", "BSE Conglomerate", "BSE"),
+        StockItem("500180", "HDFC Bank Ltd.", "BSE Private Banking", "BSE"),
+        StockItem("532454", "Bharti Airtel Ltd.", "BSE Telecom", "BSE"),
+        StockItem("532174", "ICICI Bank Ltd.", "BSE Private Banking", "BSE"),
+        StockItem("500112", "State Bank Of India", "BSE Public Banking", "BSE"),
+        StockItem("532540", "Tata Consultancy Services Ltd.", "BSE IT Services", "BSE"),
+        StockItem("500034", "Bajaj Finance Limited", "BSE NBFC", "BSE"),
+        StockItem("500510", "Larsen & Toubro Limited", "BSE Engineering", "BSE"),
+        StockItem("543526", "Life Insurance Corporation of India (LIC)", "BSE Life Insurance", "BSE"),
+        StockItem("500696", "Hindustan Unilever Ltd.", "BSE FMCG", "BSE"),
+        StockItem("500209", "Infosys Ltd", "BSE IT Services", "BSE"),
+        StockItem("524715", "Sun Pharmaceutical Industries Ltd.", "BSE Pharmaceuticals", "BSE"),
+        StockItem("532500", "Maruti Suzuki India Ltd.", "BSE Automobile", "BSE"),
+        StockItem("533096", "Adani Power Limited", "BSE Power Generation", "BSE"),
+        StockItem("500114", "Titan Company Limited", "BSE Consumer Lifestyle", "BSE"),
+        StockItem("532215", "AXIS Bank Ltd.", "BSE Private Banking", "BSE"),
+        StockItem("532921", "Adani Ports and SEZ Ltd", "BSE Ports & Logistics", "BSE"),
+        StockItem("500520", "Mahindra & Mahindra Ltd.", "BSE Automobile", "BSE"),
+        StockItem("500295", "Vedanta Limited", "BSE Metals & Mining", "BSE"),
+        StockItem("500820", "Asian Paints Limited", "BSE Paints", "BSE"),
+        StockItem("532755", "Tech Mahindra Limited", "BSE IT Services", "BSE"),
+        StockItem("500247", "Kotak Mahindra Bank Limited", "BSE Private Banking", "BSE"),
+        StockItem("500790", "Nestle India Limited", "BSE FMCG", "BSE"),
+        StockItem("532898", "Power Grid Corporation of India", "BSE Power", "BSE"),
+        StockItem("532555", "NTPC Limited", "BSE Power Generation", "BSE"),
+        StockItem("500312", "Oil & Natural Gas Corporation", "BSE Oil & Gas", "BSE"),
+        StockItem("533278", "Coal India Limited", "BSE Mining & Energy", "BSE"),
+        StockItem("500470", "Tata Steel Limited", "BSE Metals", "BSE"),
+        StockItem("500570", "Tata Motors Limited", "BSE Automobile", "BSE"),
+        StockItem("500400", "Tata Power Company Limited", "BSE Power", "BSE"),
+        StockItem("532538", "UltraTech Cement Limited", "BSE Cement", "BSE")
     )
 
     /**
      * Search stocks when 1 or more letters are typed.
      * Matches symbol prefix, company name prefix, individual name word prefixes,
      * and substring occurrences with intelligent relevance ranking.
+     * Supports optional exchange filter ("ALL", "NSE", "BSE").
      * Automatically includes dynamic custom symbol entry if not present in catalog,
      * enabling 100% of equities to be searched and predicted.
      */
-    fun search(query: String, limit: Int = 20): List<StockItem> {
+    fun search(query: String, exchange: String = "ALL", limit: Int = 20): List<StockItem> {
         val q = query.trim().uppercase()
         if (q.isBlank()) return emptyList()
+
+        val exUpper = exchange.trim().uppercase()
+        val pool = if (exUpper in listOf("ALL", "BOTH", "")) {
+            STOCKS
+        } else {
+            STOCKS.filter { it.exchange.equals(exUpper, ignoreCase = true) }
+        }
 
         val exactMatch = mutableListOf<StockItem>()
         val symbolStartsWith = mutableListOf<StockItem>()
@@ -298,7 +358,7 @@ object StockCatalog {
         val nameWordStartsWith = mutableListOf<StockItem>()
         val containsMatch = mutableListOf<StockItem>()
 
-        for (item in STOCKS) {
+        for (item in pool) {
             val sym = item.symbol.uppercase()
             val name = item.name.uppercase()
 
@@ -327,7 +387,7 @@ object StockCatalog {
                     symbol = q,
                     name = "$q Listed Equity",
                     sector = "Equities / Direct",
-                    exchange = "NSE"
+                    exchange = if (exUpper == "BSE") "BSE" else "NSE"
                 )
             )
         }
@@ -348,6 +408,21 @@ object StockCatalog {
         "NIFTYFMCG" to 57800.0,
         "NIFTYMETAL" to 8900.0,
         "NIFTYENERGY" to 39500.0,
+        "NIFTYINFRA" to 8450.0,
+        "NIFTYREALTY" to 980.0,
+        "CRUDEOIL" to 5950.0,
+        "GOLD" to 78600.0,
+        "SILVER" to 94800.0,
+        "NATURALGAS" to 245.0,
+        "COPPER" to 820.0,
+        "ZINC" to 275.0,
+        "ALUMINIUM" to 235.0,
+        "USDINR" to 84.10,
+        "EURINR" to 91.50,
+        "GBPINR" to 109.20,
+        "JPYINR" to 55.40,
+        "BTC" to 71500.0,
+        "ETH" to 2650.0,
         "RELIANCE" to 1210.0,
         "TCS" to 2156.0,
         "HDFCBANK" to 707.0,
@@ -384,7 +459,40 @@ object StockCatalog {
         "EICHERMOT" to 4800.0,
         "BAJAJ-AUTO" to 9800.0,
         "HEROMOTOCO" to 5100.0,
-        "TVSMOTOR" to 2400.0
+        "TVSMOTOR" to 2400.0,
+
+        // BSE Scrips
+        "500325" to 1163.50,
+        "500180" to 707.0,
+        "532454" to 1650.0,
+        "532174" to 1355.0,
+        "500112" to 959.0,
+        "532540" to 2502.6,
+        "500034" to 960.0,
+        "500510" to 3600.0,
+        "543526" to 960.0,
+        "500696" to 2750.0,
+        "500209" to 1023.0,
+        "524715" to 1850.0,
+        "532500" to 11420.0,
+        "533096" to 640.0,
+        "500114" to 3400.0,
+        "532215" to 1180.0,
+        "532921" to 1380.0,
+        "500520" to 2950.0,
+        "500295" to 480.0,
+        "500820" to 3100.0,
+        "532755" to 1580.0,
+        "500247" to 1820.0,
+        "500790" to 2450.0,
+        "532898" to 330.0,
+        "532555" to 410.0,
+        "500312" to 300.0,
+        "533278" to 490.0,
+        "500470" to 158.0,
+        "500570" to 980.0,
+        "500400" to 420.0,
+        "532538" to 11200.0
     )
 
     fun getDefaultSpot(symbol: String): Double {

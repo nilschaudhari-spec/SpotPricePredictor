@@ -5,7 +5,8 @@ import numpy as np
 from app.models.schemas import (
     PredictionRequest, PredictionResponse, AdvancedAnalytics,
     ModelForecastBreakdown, PredictionHorizon, TrendDirection,
-    TechnicalIndicatorInput, OptionChainResponse, StrategyType
+    TechnicalIndicatorInput, OptionChainResponse, StrategyType,
+    StrategyPredictionItem
 )
 from app.services.greeks_engine import GreeksEngine
 from app.services.oi_analyzer import OIAnalyzer
@@ -213,6 +214,84 @@ class PredictionOrchestrator:
             price_action_spot=m5_spot
         )
 
+        # Determine unequivocal BUY, HOLD, or SELL recommendation for stock/asset
+        if (prob_bullish >= 0.45 and prob_bullish > prob_bearish and ensemble_spot >= current_spot) or (strategy in [StrategyType.BUY_CALL, StrategyType.CALL_SPREAD]):
+            action_recommendation = "BUY"
+            action_rationale = f"BUY Recommendation: Bullish probability of {round(prob_bullish * 100, 1)}% with upside target of ₹{target_price} and stop-loss at ₹{stop_loss}."
+        elif (prob_bearish >= 0.45 and prob_bearish > prob_bullish and ensemble_spot <= current_spot) or (strategy in [StrategyType.BUY_PUT, StrategyType.PUT_SPREAD]):
+            action_recommendation = "SELL"
+            action_rationale = f"SELL Recommendation: Downward pressure with Bearish probability of {round(prob_bearish * 100, 1)}% targeting ₹{target_price} with risk cap at ₹{stop_loss}."
+        else:
+            action_recommendation = "HOLD"
+            action_rationale = f"HOLD Recommendation: Range-bound consolidation ({round(prob_sideways * 100, 1)}% neutral regime). Maintain existing positions; await clear directional breakout."
+
+        atr_val = tech_eval["atr"]
+        various_strategies: List[StrategyPredictionItem] = [
+            StrategyPredictionItem(
+                strategy_name="Multi-Model AI Master Ensemble",
+                predicted_spot=ensemble_spot,
+                target_price=target_price,
+                stop_loss=stop_loss,
+                signal=action_recommendation,
+                confidence_pct=confidence_pct,
+                rationale=f"Confluence blend across OI, Greeks, XGBoost, LSTM, and Price Action with {confidence_pct}% confidence."
+            ),
+            StrategyPredictionItem(
+                strategy_name="Momentum & Moving Average Crossover",
+                predicted_spot=round(current_spot + (atr_val * (1.2 if tech_eval['trend_score'] >= 0 else -1.2)), 2),
+                target_price=round(current_spot + (atr_val * (1.8 if tech_eval['trend_score'] >= 0 else -1.8)), 2),
+                stop_loss=round(current_spot - (atr_val * (0.9 if tech_eval['trend_score'] >= 0 else -0.9)), 2),
+                signal="BUY" if tech_eval["trend_score"] >= 15 else ("SELL" if tech_eval["trend_score"] <= -15 else "HOLD"),
+                confidence_pct=round(min(94.0, 60.0 + abs(tech_eval["trend_score"]) * 0.35), 1),
+                rationale=f"EMA 20/50 alignment ({tech_eval['ema_20']}/{tech_eval['ema_50']}) with Supertrend {tech_eval['supertrend']}."
+            ),
+            StrategyPredictionItem(
+                strategy_name="Mean Reversion & Volatility Bands",
+                predicted_spot=round(current_spot + (atr_val * (-1.0 if tech_eval['rsi'] > 65 else (1.0 if tech_eval['rsi'] < 35 else 0.2))), 2),
+                target_price=round(current_spot + (atr_val * (-1.5 if tech_eval['rsi'] > 65 else (1.5 if tech_eval['rsi'] < 35 else 0.5))), 2),
+                stop_loss=round(current_spot - (atr_val * (-0.8 if tech_eval['rsi'] > 65 else (0.8 if tech_eval['rsi'] < 35 else 0.4))), 2),
+                signal="SELL" if tech_eval["rsi"] >= 68 else ("BUY" if tech_eval["rsi"] <= 35 else ("BUY" if current_spot >= tech_eval["vwap"] else "SELL")),
+                confidence_pct=round(min(90.0, 55.0 + abs(tech_eval["rsi"] - 50.0) * 1.4), 1),
+                rationale=f"RSI oscillator at {tech_eval['rsi']:.1f} with VWAP reference at ₹{tech_eval['vwap']}."
+            ),
+            StrategyPredictionItem(
+                strategy_name="Option Chain & Max Pain Magnet",
+                predicted_spot=m1_spot,
+                target_price=round(max_pain + (atr_val * 0.6 if m1_spot >= current_spot else -0.6), 2),
+                stop_loss=round(current_spot - (atr_val * 0.8 if m1_spot >= current_spot else -0.8), 2),
+                signal="BUY" if m1_spot > current_spot else ("SELL" if m1_spot < current_spot else "HOLD"),
+                confidence_pct=round(min(92.0, 65.0 + abs(oi_pcr - 1.0) * 20.0), 1),
+                rationale=f"Put-Call Ratio of {oi_pcr:.2f} with institutional Max Pain magnet at ₹{max_pain:.0f}."
+            ),
+            StrategyPredictionItem(
+                strategy_name="ML Gradient Boosting Regressor (XGB+LGB)",
+                predicted_spot=m3_spot,
+                target_price=round(m3_spot + (atr_val * (0.7 if m3_spot >= current_spot else -0.7)), 2),
+                stop_loss=round(current_spot - (atr_val * (0.8 if m3_spot >= current_spot else -0.8)), 2),
+                signal="BUY" if m3_spot >= current_spot else "SELL",
+                confidence_pct=round(min(95.0, 72.0 + abs(m3_spot - current_spot) / (atr_val + 1e-4) * 8.0), 1),
+                rationale=f"Multi-feature tree regression model evaluating IV skew, momentum, and volume profile."
+            ),
+            StrategyPredictionItem(
+                strategy_name="LSTM Deep Recurrent Pathing",
+                predicted_spot=m4_spot,
+                target_price=round(m4_spot + (atr_val * (0.6 if m4_spot >= current_spot else -0.6)), 2),
+                stop_loss=round(current_spot - (atr_val * (0.8 if m4_spot >= current_spot else -0.8)), 2),
+                signal="BUY" if m4_spot >= current_spot else "SELL",
+                confidence_pct=round(min(91.0, 70.0 + abs(m4_spot - current_spot) / (atr_val + 1e-4) * 7.0), 1),
+                rationale=f"Recurrent sequence projection over {horizon_mins}m horizon modeling volatility clustering."
+            ),
+            StrategyPredictionItem(
+                strategy_name="Breakout & Liquidity Zone Price Action",
+                predicted_spot=m5_spot,
+                target_price=round(m5_spot + (atr_val * (0.8 if m5_spot >= current_spot else -0.8)), 2),
+                stop_loss=round(current_spot - (atr_val * (0.9 if m5_spot >= current_spot else -0.9)), 2),
+                signal="BUY" if m5_spot >= current_spot else "SELL",
+                confidence_pct=round(min(93.0, 68.0 + abs(m5_spot - current_spot) / (atr_val + 1e-4) * 7.5), 1),
+                rationale=f"Support/Resistance retest against Key Support at ₹{supports[-1] if supports else round(current_spot * 0.985, 2)}."
+            )
+        ]
+
         return PredictionResponse(
             symbol=request.symbol.upper(),
             current_spot=current_spot,
@@ -234,5 +313,8 @@ class PredictionOrchestrator:
             suggested_strategy=strategy,
             strategy_rationale=rationale,
             advanced_analysis=advanced_analytics,
-            model_breakdown=model_breakdown
+            model_breakdown=model_breakdown,
+            action_recommendation=action_recommendation,
+            action_rationale=action_rationale,
+            various_strategies=various_strategies
         )

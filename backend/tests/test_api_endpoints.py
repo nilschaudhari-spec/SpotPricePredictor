@@ -45,6 +45,8 @@ def test_predict_endpoint_e2e():
     assert "suggested_strategy" in data
     assert "model_breakdown" in data
     assert "disclaimer" in data
+    assert data["action_recommendation"] in ["BUY", "HOLD", "SELL"]
+    assert data["action_rationale"] is not None and len(data["action_rationale"]) > 0
 
 def test_market_search_empty_returns_empty():
     response = client.get("/api/v1/market/search?q=")
@@ -120,6 +122,56 @@ def test_predict_custom_arbitrary_stock():
     data = response.json()
     assert data["symbol"] == "SUZLON"
     assert data["predicted_spot_price"] > 0
+    assert data["action_recommendation"] in ["BUY", "HOLD", "SELL"]
+    assert data["action_rationale"] is not None and "SUZLON" in str(data["action_rationale"]) or len(data["action_rationale"]) > 0
+
+def test_market_gainers_losers_nse():
+    response = client.get("/api/v1/market/gainers-losers?exchange=NSE&limit=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["exchange"] == "NSE"
+    assert "gainers" in data
+    assert "losers" in data
+    assert len(data["gainers"]) > 0
+    assert len(data["losers"]) > 0
+    first_gainer = data["gainers"][0]
+    assert "symbol" in first_gainer
+    assert "spot_price" in first_gainer
+    assert "change" in first_gainer
+    assert "change_percent" in first_gainer
+    assert first_gainer["exchange"] == "NSE"
+
+def test_market_gainers_losers_bse():
+    response = client.get("/api/v1/market/gainers-losers?exchange=BSE&limit=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["exchange"] == "BSE"
+    assert "gainers" in data
+    assert "losers" in data
+    assert len(data["gainers"]) > 0
+    assert len(data["losers"]) > 0
+    first_loser = data["losers"][0]
+    assert "symbol" in first_loser
+    assert "change_percent" in first_loser
+    assert first_loser["exchange"] == "BSE"
+
+def test_market_gainers_losers_all():
+    response = client.get("/api/v1/market/gainers-losers?exchange=ALL&limit=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["exchange"] == "ALL"
+    assert "nse" in data
+    assert "bse" in data
+    assert len(data["gainers"]) > 0
+    assert len(data["losers"]) > 0
+
+def test_bse_securities_search():
+    response = client.get("/api/v1/market/search?q=500325")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) > 0
+    assert any("500325" in str(s.get("scrip_code", "")) or "500325" in str(s.get("symbol", "")) for s in data)
+
 
 
 

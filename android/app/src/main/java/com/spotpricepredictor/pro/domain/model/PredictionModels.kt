@@ -24,6 +24,16 @@ data class ModelForecastBreakdown(
     val priceActionSpot: Double
 )
 
+data class StrategyPrediction(
+    val strategyName: String,
+    val predictedSpot: Double,
+    val targetPrice: Double,
+    val stopLoss: Double,
+    val signal: String, // "BUY", "SELL", "HOLD"
+    val confidencePct: Double,
+    val rationale: String
+)
+
 data class PredictionResult(
     val symbol: String,
     val currentSpot: Double,
@@ -46,5 +56,8 @@ data class PredictionResult(
     val strategyRationale: String,
     val advancedAnalysis: AdvancedAnalysis,
     val modelBreakdown: ModelForecastBreakdown,
+    val actionRecommendation: String = "BUY", // "BUY", "HOLD", or "SELL"
+    val actionRationale: String? = null,
+    val variousStrategies: List<StrategyPrediction> = emptyList(),
     val disclaimer: String
 )

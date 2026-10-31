@@ -12,6 +12,10 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+import com.spotpricepredictor.pro.data.api.models.ChartDataResponseDto
+import com.spotpricepredictor.pro.data.api.models.GainersLosersResponseDto
+import com.spotpricepredictor.pro.data.api.models.TradeSuggestionsResponseDto
+
 interface PredictorApiService {
 
     @POST("api/v1/predict")
@@ -35,5 +39,27 @@ interface PredictorApiService {
 
     @GET("api/v1/market/news")
     suspend fun getMarketNews(): Response<MarketNewsBriefingDto>
+
+    @GET("api/v1/trade-signals/suggestions")
+    suspend fun getTradeSuggestions(
+        @Query("category") category: String? = "ALL",
+        @Query("instrument") instrument: String? = "ALL",
+        @Query("action") action: String? = "ALL",
+        @Query("symbol") symbol: String? = null
+    ): Response<TradeSuggestionsResponseDto>
+
+    @GET("api/v1/trade-signals/chart/{symbol}")
+    suspend fun getChartWithIndicators(
+        @Path("symbol") symbol: String,
+        @Query("interval") interval: String = "15m",
+        @Query("limit") limit: Int = 60
+    ): Response<ChartDataResponseDto>
+
+    @GET("api/v1/market/gainers-losers")
+    suspend fun getGainersLosers(
+        @Query("exchange") exchange: String = "NSE",
+        @Query("limit") limit: Int = 10
+    ): Response<GainersLosersResponseDto>
 }
+
 

@@ -12,7 +12,7 @@ The system is engineered as a decoupled, high-performance client-server ecosyste
 Spot Price Predictor Pro/
 ├── backend/                  # Python FastAPI Quant & ML Inference Engine
 │   ├── app/
-│   │   ├── api/              # REST Endpoints (Predict, Option Chain, Market Data, Admin)
+│   │   ├── api/              # REST Endpoints (Predict, Trade Signals, Option Chain, Market Data, Admin)
 │   │   ├── core/             # Configuration & Settings
 │   │   ├── models/           # Pydantic Schemas & DTOs
 │   │   └── services/         # Quantitative Math & Model Services
@@ -23,8 +23,11 @@ Spot Price Predictor Pro/
 │   │       ├── lstm_predictor.py         # Recurrent State Volatility Simulation
 │   │       ├── price_action.py           # Candlestick, Breakout & Liquidity Zones
 │   │       ├── strategy_recommender.py   # Option Strategies (Spreads, Condor, Straddle)
+│   │       ├── trade_suggestion_engine.py# Algorithmic Buy/Sell Signals (Equity & F&O)
+│   │       ├── chart_service.py          # Candlestick Charts & Technical Indicator Engine
 │   │       └── prediction_orchestrator.py# Master Multi-Model Synthesis Engine
 │   └── tests/                # Automated Pytest Suite (100% Passing)
+
 │
 └── android/                  # Native Android App (Kotlin + Jetpack Compose)
     ├── app/

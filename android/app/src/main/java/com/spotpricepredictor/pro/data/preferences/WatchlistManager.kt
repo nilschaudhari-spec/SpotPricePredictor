@@ -17,9 +17,11 @@ class WatchlistManager @Inject constructor(
         private const val PREFS_NAME = "spot_watchlist_prefs"
         private const val KEY_SYMBOLS = "custom_symbols_list"
         val DEFAULT_SYMBOLS = listOf(
-            "NIFTY", "BANKNIFTY", "FINNIFTY",
-            "RELIANCE", "TCS", "HDFCBANK", "INFY",
-            "SBIN", "ITC", "WIPRO", "BAJFINANCE"
+            "NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX",
+            "CRUDEOIL", "GOLD", "SILVER", "NATURALGAS", "USDINR",
+            "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN",
+            "TATAMOTORS", "ITC", "WIPRO", "BAJFINANCE", "BHARTIARTL", "MARUTI",
+            "LT", "KOTAKBANK", "AXISBANK", "TATASTEEL", "TITAN", "SUNPHARMA", "ZOMATO"
         )
     }
 

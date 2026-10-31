@@ -36,4 +36,23 @@ interface MarketRepository {
     suspend fun recordActualOutcome(id: Long, actualSpot: Double, status: String)
 
     suspend fun getMarketNews(): Result<com.spotpricepredictor.pro.domain.model.MarketNewsBriefing>
+
+    suspend fun getTradeSuggestions(
+        category: String? = "ALL",
+        instrument: String? = "ALL",
+        action: String? = "ALL",
+        symbol: String? = null
+    ): Result<com.spotpricepredictor.pro.domain.model.TradeSuggestionsResponse>
+
+    suspend fun getChartData(
+        symbol: String,
+        interval: String = "15m",
+        limit: Int = 60
+    ): Result<com.spotpricepredictor.pro.domain.model.ChartData>
+
+    suspend fun getGainersLosers(
+        exchange: String = "NSE",
+        limit: Int = 10
+    ): Result<com.spotpricepredictor.pro.domain.model.GainersLosersData>
 }
+
