@@ -79,7 +79,12 @@ data class LiveQuote(
     val changePercent: Double,
     val isRealtime: Boolean,
     val step: Double? = null,
-    val lotSize: Int? = null
+    val lotSize: Int? = null,
+    val isMarketOpen: Boolean = false,
+    val marketStatus: String = "MARKET CLOSED",
+    val sessionLabel: String = "Official Close",
+    val lastCloseTime: String = "",
+    val nextSession: String = ""
 )
 
 data class OptionChainData(

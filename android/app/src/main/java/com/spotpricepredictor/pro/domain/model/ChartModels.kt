@@ -41,7 +41,11 @@ data class ChartData(
     val technicalScore: Double = 0.0,
     val targetPrice: Double? = null,
     val stopLoss: Double? = null,
-    val strategySignals: List<StrategySignal> = emptyList()
+    val strategySignals: List<StrategySignal> = emptyList(),
+    val isMarketOpen: Boolean = false,
+    val marketStatus: String = "MARKET CLOSED",
+    val sessionLabel: String = "Official Close",
+    val lastCloseTime: String = ""
 )
 
 data class IndicatorConfig(

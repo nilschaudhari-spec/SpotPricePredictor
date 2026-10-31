@@ -428,6 +428,10 @@ async def get_quote_and_technicals(symbol: str) -> Dict[str, Any]:
         "is_realtime": quote["is_realtime"],
         "step": quote["step"],
         "lot_size": quote["lot_size"],
+        "is_market_open": quote.get("is_market_open", False),
+        "market_status": quote.get("market_status", "MARKET CLOSED"),
+        "session_label": quote.get("session_label", "Official Close"),
+        "last_close_time": quote.get("last_close_time", ""),
         "technicals": technicals
     }
 

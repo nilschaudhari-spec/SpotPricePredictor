@@ -294,4 +294,8 @@ class ChartDataResponse(BaseModel):
     target_price: Optional[float] = None
     stop_loss: Optional[float] = None
     strategy_signals: List[StrategySignalItem] = []
+    is_market_open: bool = False
+    market_status: str = "MARKET CLOSED"
+    session_label: str = "Official Close"
+    last_close_time: Optional[str] = None
 

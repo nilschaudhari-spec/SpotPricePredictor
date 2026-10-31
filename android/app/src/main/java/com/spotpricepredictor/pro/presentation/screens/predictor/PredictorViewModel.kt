@@ -10,6 +10,8 @@ import com.spotpricepredictor.pro.domain.model.PredictionResult
 import com.spotpricepredictor.pro.domain.model.StockCatalog
 import com.spotpricepredictor.pro.domain.model.TrendDirection
 import com.spotpricepredictor.pro.domain.model.ChartData
+import com.spotpricepredictor.pro.domain.model.MarketStatusHelper
+import com.spotpricepredictor.pro.domain.model.MarketStatusInfo
 import com.spotpricepredictor.pro.domain.model.GainersLosersData
 import com.spotpricepredictor.pro.domain.model.MarketMoverItem
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
@@ -65,8 +67,12 @@ class PredictorViewModel @Inject constructor(
     val moversExchange = MutableStateFlow("NSE") // "NSE" or "BSE"
     val moversTab = MutableStateFlow("GAINERS") // "GAINERS" or "LOSERS"
 
+    // Market Status (Live vs Closed)
+    val marketStatus = MutableStateFlow(MarketStatusHelper.getMarketStatus("NIFTY"))
+    val isDemoSimulation = MutableStateFlow(false)
+
     // 1ms High-Frequency Real-Time Stream Engine
-    val is1msStreamingActive = MutableStateFlow(true)
+    val is1msStreamingActive = MutableStateFlow(false)
     val tickCounter = MutableStateFlow(0L)
 
     // Script Categories
@@ -79,7 +85,7 @@ class PredictorViewModel @Inject constructor(
     val chartInterval = MutableStateFlow("15m")
 
     var selectedSymbol = MutableStateFlow("NIFTY")
-    var spotPriceInput = MutableStateFlow("22520.0")
+    var spotPriceInput = MutableStateFlow("23053.10")
     var selectedHorizon = MutableStateFlow(PredictionHorizon.MIN_15)
     var selectedTrend = MutableStateFlow(TrendDirection.AUTO)
     var customMinutesInput = MutableStateFlow("45")
@@ -92,10 +98,15 @@ class PredictorViewModel @Inject constructor(
         val initialSpot = StockCatalog.getDefaultSpot("NIFTY")
         spotPriceInput.value = initialSpot.toString()
         updateCategorySymbols("ALL")
+        val mStatus = MarketStatusHelper.getMarketStatus("NIFTY")
+        marketStatus.value = mStatus
+        is1msStreamingActive.value = mStatus.isOpen
         fetchLiveQuote("NIFTY", autoUpdateInput = true)
         fetchGainersLosers("NSE")
         startRealtimeQuotePolling()
-        start1msHighFrequencyTicker()
+        if (mStatus.isOpen) {
+            start1msHighFrequencyTicker()
+        }
     }
 
     fun setServerUrl(url: String) {
@@ -103,12 +114,27 @@ class PredictorViewModel @Inject constructor(
     }
 
     fun toggle1msStreaming() {
-        val next = !is1msStreamingActive.value
-        is1msStreamingActive.value = next
-        if (next) {
-            start1msHighFrequencyTicker()
+        val mStatus = MarketStatusHelper.getMarketStatus(selectedSymbol.value)
+        marketStatus.value = mStatus
+        if (!mStatus.isOpen) {
+            // Market is closed: toggling activates or deactivates demo simulation mode
+            val nextDemo = !isDemoSimulation.value
+            isDemoSimulation.value = nextDemo
+            is1msStreamingActive.value = nextDemo
+            if (nextDemo) {
+                start1msHighFrequencyTicker()
+            } else {
+                highFreqTickerJob?.cancel()
+                fetchLiveQuote(selectedSymbol.value, autoUpdateInput = true)
+            }
         } else {
-            highFreqTickerJob?.cancel()
+            val next = !is1msStreamingActive.value
+            is1msStreamingActive.value = next
+            if (next) {
+                start1msHighFrequencyTicker()
+            } else {
+                highFreqTickerJob?.cancel()
+            }
         }
     }
 
@@ -182,15 +208,25 @@ class PredictorViewModel @Inject constructor(
 
         selectedSymbol.value = clean
         isAutoDetectActive.value = true
+        val mStatus = MarketStatusHelper.getMarketStatus(clean)
+        marketStatus.value = mStatus
 
         // 1. Immediately auto-detect baseline spot from StockCatalog
         val baselineSpot = StockCatalog.getDefaultSpot(clean)
         spotPriceInput.value = baselineSpot.toString()
 
-        // 2. Fetch live real-time market quote
+        // 2. Fetch live or official closing market quote
         fetchLiveQuote(clean, autoUpdateInput = true)
 
-        // 3. If chart modal is open, load new chart immediately
+        // 3. Control 1ms stream based on market open status
+        if (!mStatus.isOpen && !isDemoSimulation.value) {
+            is1msStreamingActive.value = false
+            highFreqTickerJob?.cancel()
+        } else if (mStatus.isOpen || isDemoSimulation.value) {
+            start1msHighFrequencyTicker()
+        }
+
+        // 4. If chart modal is open, load new chart immediately
         if (showChartModal.value) {
             loadChartData(chartInterval.value)
         }
@@ -211,10 +247,17 @@ class PredictorViewModel @Inject constructor(
     fun fetchLiveQuote(symbol: String, autoUpdateInput: Boolean = true) {
         viewModelScope.launch {
             isFetchingQuote.value = true
+            val mStatus = MarketStatusHelper.getMarketStatus(symbol)
+            marketStatus.value = mStatus
+
             val res = getRealtimeQuoteUseCase(symbol)
             res.fold(
                 onSuccess = { quote ->
                     liveQuote.value = quote
+                    if (!quote.isMarketOpen && !isDemoSimulation.value) {
+                        is1msStreamingActive.value = false
+                        highFreqTickerJob?.cancel()
+                    }
                     if (autoUpdateInput || isAutoDetectActive.value) {
                         spotPriceInput.value = quote.spotPrice.toString()
                     }
@@ -222,9 +265,23 @@ class PredictorViewModel @Inject constructor(
                     lastSyncTime.value = timeFormat.format(Date())
                 },
                 onFailure = {
+                    val fallbackSpot = StockCatalog.getDefaultSpot(symbol)
                     if (spotPriceInput.value.isBlank()) {
-                        spotPriceInput.value = StockCatalog.getDefaultSpot(symbol).toString()
+                        spotPriceInput.value = fallbackSpot.toString()
                     }
+                    liveQuote.value = LiveQuote(
+                        symbol = symbol,
+                        spotPrice = fallbackSpot,
+                        previousClose = fallbackSpot,
+                        change = 0.0,
+                        changePercent = 0.0,
+                        isRealtime = false,
+                        isMarketOpen = mStatus.isOpen,
+                        marketStatus = mStatus.statusText,
+                        sessionLabel = mStatus.sessionLabel,
+                        lastCloseTime = mStatus.lastCloseTime,
+                        nextSession = mStatus.nextSession
+                    )
                 }
             )
             isFetchingQuote.value = false
@@ -240,9 +297,9 @@ class PredictorViewModel @Inject constructor(
                 val res = getRealtimeQuoteUseCase(currentSym)
                 res.onSuccess { quote ->
                     val prevLive = liveQuote.value
-                    if (prevLive == null || prevLive.symbol != quote.symbol) {
+                    if (prevLive == null || prevLive.symbol != quote.symbol || (!is1msStreamingActive.value && !isDemoSimulation.value)) {
                         liveQuote.value = quote
-                        if (isAutoDetectActive.value) {
+                        if (isAutoDetectActive.value && (!is1msStreamingActive.value || !quote.isMarketOpen)) {
                             spotPriceInput.value = quote.spotPrice.toString()
                         }
                     }
@@ -255,12 +312,22 @@ class PredictorViewModel @Inject constructor(
 
     /**
      * Ultra-Fast High-Frequency 1 Millisecond Real-Time Ticker Stream.
-     * Continuously streams live micro-ticks, refreshing the current spot price,
-     * live percentage change, and dynamically updating the live active candle
-     * (close, high, low, volume) in real-time without UI thread lockup.
+     * Active only when market is OPEN, or when user explicitly tests in Demo Simulation Mode.
+     * When market is CLOSED, spot price and candles remain frozen at official closing data.
      */
     private fun start1msHighFrequencyTicker() {
         highFreqTickerJob?.cancel()
+        val currentSym = selectedSymbol.value
+        val mStatus = MarketStatusHelper.getMarketStatus(currentSym)
+        marketStatus.value = mStatus
+
+        // If market is closed and user has not requested demo simulation, do not run ticker
+        if (!mStatus.isOpen && !isDemoSimulation.value) {
+            is1msStreamingActive.value = false
+            return
+        }
+
+        is1msStreamingActive.value = true
         highFreqTickerJob = viewModelScope.launch(Dispatchers.Default) {
             var tickIdx = 0L
             while (isActive) {
@@ -268,8 +335,8 @@ class PredictorViewModel @Inject constructor(
                 tickIdx++
                 tickCounter.value = tickIdx
 
-                val currentSym = selectedSymbol.value
-                val baseSpot = liveQuote.value?.spotPrice ?: StockCatalog.getDefaultSpot(currentSym)
+                val sym = selectedSymbol.value
+                val baseSpot = liveQuote.value?.spotPrice ?: StockCatalog.getDefaultSpot(sym)
                 val prevClose = liveQuote.value?.previousClose ?: baseSpot
 
                 // Generate realistic micro-tick fluctuation (within ±0.03% market wave)
@@ -280,12 +347,17 @@ class PredictorViewModel @Inject constructor(
 
                 // Update LiveQuote
                 liveQuote.value = LiveQuote(
-                    symbol = currentSym,
+                    symbol = sym,
                     spotPrice = newPrice,
                     previousClose = prevClose,
                     change = change,
                     changePercent = changePct,
-                    isRealtime = true
+                    isRealtime = mStatus.isOpen || isDemoSimulation.value,
+                    isMarketOpen = mStatus.isOpen,
+                    marketStatus = if (isDemoSimulation.value && !mStatus.isOpen) "DEMO SIMULATION" else mStatus.statusText,
+                    sessionLabel = if (isDemoSimulation.value && !mStatus.isOpen) "Demo Simulation Mode" else mStatus.sessionLabel,
+                    lastCloseTime = mStatus.lastCloseTime,
+                    nextSession = mStatus.nextSession
                 )
 
                 // If user didn't manually overwrite the input, reflect real-time live price

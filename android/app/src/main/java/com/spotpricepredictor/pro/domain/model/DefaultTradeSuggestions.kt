@@ -5,108 +5,108 @@ object DefaultTradeSuggestions {
     fun getFallbackResponse(): TradeSuggestionsResponse {
         val list = listOf(
             TradeSuggestion(
-                id = "NIFTY_FNO_BUY_22520",
+                id = "NIFTY_FNO_BUY_23050",
                 symbol = "NIFTY",
                 name = "Nifty 50 Benchmark Index",
                 category = SignalCategory.INDEX,
                 instrumentType = InstrumentType.OPTIONS,
                 action = TradeAction.BUY,
                 signalStrength = SignalStrength.STRONG_BUY,
-                currentPrice = 22520.0,
-                entryPrice = 22510.0,
-                target1 = 22680.0,
-                target2 = 22790.0,
-                stopLoss = 22410.0,
+                currentPrice = 23053.10,
+                entryPrice = 23040.0,
+                target1 = 23220.0,
+                target2 = 23350.0,
+                stopLoss = 22940.0,
                 riskRewardRatio = "1:2.4",
-                potentialGainPct = 0.76,
+                potentialGainPct = 0.72,
                 timeframe = "Intraday (15-60m)",
                 confidencePct = 86.4,
                 fnoDetails = FNODetails(
-                    contractName = "NIFTY 22550 CE",
+                    contractName = "NIFTY 23100 CE",
                     derivativeType = "OPTIONS",
                     optionType = "CE",
-                    strikePrice = 22550.0,
-                    expiryDate = "28-Oct-2026",
-                    premiumEntry = 128.5,
-                    premiumTarget = 186.0,
-                    premiumStopLoss = 89.0,
+                    strikePrice = 23100.0,
+                    expiryDate = "05-Nov-2026",
+                    premiumEntry = 138.5,
+                    premiumTarget = 196.0,
+                    premiumStopLoss = 95.0,
                     lotSize = 25,
                     strategyType = "Long Call (Momentum Breakout)"
                 ),
                 technicalAnalysis = TechnicalSummary(
                     trend = "BULLISH BREAKOUT",
-                    rsi = 64.2,
-                    rsiSignal = "Bullish Momentum (>60)",
-                    macdStatus = "Bullish Golden Cross above 0 line",
-                    emaAlignment = "Price > 20 EMA (22440) > 50 EMA (22380)",
-                    supertrend = "Bullish (Green, Support at 22420)",
-                    vwapSignal = "Above VWAP (22485) - Institutional Accumulation",
+                    rsi = 57.8,
+                    rsiSignal = "Bullish Momentum (>55)",
+                    macdStatus = "Bullish Expansion above 0 line",
+                    emaAlignment = "Price > 20 EMA (23030) > 50 EMA (22933)",
+                    supertrend = "Bullish (Green, Support at 22947)",
+                    vwapSignal = "Above VWAP - Institutional Accumulation",
                     bollingerSignal = "Upper Band Walking Expansion",
-                    supportLevel = 22450.0,
-                    resistanceLevel = 22680.0,
-                    oiPcr = 1.28,
-                    maxPain = 22500.0,
-                    rationale = "NIFTY displays strong bullish confluence across all 5 quantitative models. Price has broken above consolidation with high-volume expansion above VWAP. Heavy Put writing at 22500 strike (PCR 1.28) provides a solid demand floor against dealer pinning. MACD positive histogram widening confirms strong upside follow-through."
+                    supportLevel = 22980.0,
+                    resistanceLevel = 23220.0,
+                    oiPcr = 1.25,
+                    maxPain = 23000.0,
+                    rationale = "NIFTY closed firmly above 23000 at 23053.10 with positive technical confirmation. Price maintains structure above 20 EMA (23030) and 50 EMA (22933). Put writing support floor at 23000 strike (PCR 1.25) provides dynamic support."
                 )
             ),
             TradeSuggestion(
-                id = "BANKNIFTY_FNO_BUY_55250",
+                id = "BANKNIFTY_FNO_BUY_54680",
                 symbol = "BANKNIFTY",
                 name = "Nifty Bank Sector Index",
                 category = SignalCategory.INDEX,
                 instrumentType = InstrumentType.OPTIONS,
                 action = TradeAction.BUY,
-                signalStrength = SignalStrength.STRONG_BUY,
-                currentPrice = 55250.0,
-                entryPrice = 55220.0,
-                target1 = 55650.0,
-                target2 = 55950.0,
-                stopLoss = 54980.0,
-                riskRewardRatio = "1:2.6",
-                potentialGainPct = 0.78,
+                signalStrength = SignalStrength.BUY,
+                currentPrice = 54686.95,
+                entryPrice = 54650.0,
+                target1 = 55100.0,
+                target2 = 55450.0,
+                stopLoss = 54380.0,
+                riskRewardRatio = "1:2.2",
+                potentialGainPct = 0.76,
                 timeframe = "Intraday (15-60m)",
-                confidencePct = 83.5,
+                confidencePct = 81.5,
                 fnoDetails = FNODetails(
-                    contractName = "BANKNIFTY 55300 CE",
+                    contractName = "BANKNIFTY 54700 CE",
                     derivativeType = "OPTIONS",
                     optionType = "CE",
-                    strikePrice = 55300.0,
-                    expiryDate = "28-Oct-2026",
-                    premiumEntry = 285.0,
-                    premiumTarget = 420.0,
-                    premiumStopLoss = 195.0,
+                    strikePrice = 54700.0,
+                    expiryDate = "05-Nov-2026",
+                    premiumEntry = 275.0,
+                    premiumTarget = 390.0,
+                    premiumStopLoss = 185.0,
                     lotSize = 15,
                     strategyType = "Bull Call Spread / Long Call"
                 ),
                 technicalAnalysis = TechnicalSummary(
                     trend = "BULLISH",
-                    rsi = 61.8,
+                    rsi = 58.4,
                     rsiSignal = "Bullish Expansion",
-                    macdStatus = "Strong Bullish Crossover",
-                    emaAlignment = "Price above 20 EMA (55080) & 50 EMA (54890)",
+                    macdStatus = "Bullish Alignment",
+                    emaAlignment = "Price above 20 EMA (54550) & 50 EMA (54380)",
                     supertrend = "Bullish (Green)",
-                    vwapSignal = "Above VWAP (55140)",
+                    vwapSignal = "Above Session VWAP",
                     bollingerSignal = "Middle Band Bounce",
-                    supportLevel = 55000.0,
-                    resistanceLevel = 55700.0,
-                    oiPcr = 1.18,
-                    maxPain = 55000.0,
-                    rationale = "Banking giants HDFCBANK, ICICIBANK, and SBIN exhibiting synchronized long buildup. Dealer gamma positioning has turned net positive above 55100, creating upward drift toward 55650. Supertrend remains green and 20 EMA serves as dynamic trailing support."
+                    supportLevel = 54400.0,
+                    resistanceLevel = 55100.0,
+                    oiPcr = 1.15,
+                    maxPain = 54500.0,
+                    rationale = "Private banks HDFCBANK and ICICIBANK exhibit accumulation. 20 EMA serves as dynamic trailing support near 54550."
                 )
             ),
             TradeSuggestion(
-                id = "RELIANCE_EQ_BUY_1170",
+                id = "RELIANCE_EQ_BUY_1165",
                 symbol = "RELIANCE",
                 name = "Reliance Industries Ltd",
                 category = SignalCategory.EQUITY,
                 instrumentType = InstrumentType.EQUITY,
                 action = TradeAction.BUY,
                 signalStrength = SignalStrength.BUY,
-                currentPrice = 1170.0,
-                entryPrice = 1168.0,
-                target1 = 1205.0,
-                target2 = 1230.0,
-                stopLoss = 1145.0,
+                currentPrice = 1164.90,
+                entryPrice = 1162.0,
+                target1 = 1195.0,
+                target2 = 1220.0,
+                stopLoss = 1142.0,
                 riskRewardRatio = "1:2.3",
                 potentialGainPct = 3.17,
                 timeframe = "Swing (1-3 Days)",
@@ -340,19 +340,7 @@ object DefaultTradeSuggestions {
 
     fun getFallbackChart(symbol: String, interval: String = "15m"): ChartData {
         val sym = symbol.uppercase().trim()
-        val basePrice = when (sym) {
-            "NIFTY" -> 22520.0
-            "BANKNIFTY" -> 55250.0
-            "FINNIFTY" -> 23600.0
-            "SENSEX" -> 74500.0
-            "RELIANCE" -> 1170.0
-            "TCS" -> 2156.0
-            "HDFCBANK" -> 707.0
-            "INFY" -> 1023.0
-            "SBIN" -> 959.0
-            "TATAMOTORS" -> 980.0
-            else -> 1000.0
-        }
+        val basePrice = StockCatalog.getDefaultSpot(sym)
 
         val baseStep = when {
             basePrice > 40000 -> 75.0

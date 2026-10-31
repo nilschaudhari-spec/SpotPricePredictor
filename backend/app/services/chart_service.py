@@ -37,6 +37,9 @@ class ChartService:
         # 4. Evaluate Multi-Strategy Technical Analysis signals
         tech_call, tech_score, target_price, stop_loss, strategy_signals = cls._evaluate_strategies_from_candles(candles, spot)
 
+        from app.services.market_status import get_market_status
+        m_status = get_market_status(sym)
+
         return ChartDataResponse(
             symbol=sym,
             interval=interval,
@@ -48,7 +51,11 @@ class ChartService:
             technical_score=tech_score,
             target_price=target_price,
             stop_loss=stop_loss,
-            strategy_signals=strategy_signals
+            strategy_signals=strategy_signals,
+            is_market_open=m_status["is_open"],
+            market_status=m_status["status"],
+            session_label=m_status["session_label"],
+            last_close_time=m_status["last_close_time"]
         )
 
     @classmethod

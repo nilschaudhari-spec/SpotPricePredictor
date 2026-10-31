@@ -145,7 +145,11 @@ fun SignalsScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Market Sentiment Indicator Banner
+        // Market Sentiment & Open/Closed Status Banner
+        val mStatus = com.spotpricepredictor.pro.domain.model.MarketStatusHelper.getMarketStatus()
+        val statusDotColor = if (mStatus.isOpen) NeonEmerald else CrimsonAlert
+        val statusText = if (mStatus.isOpen) "🟢 LIVE MARKET" else "🔴 MARKET CLOSED"
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -157,11 +161,11 @@ fun SignalsScreen(
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(NeonEmerald, RoundedCornerShape(4.dp))
+                        .background(statusDotColor, RoundedCornerShape(4.dp))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = marketSentiment,
+                    text = "$statusText • $marketSentiment",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextSecondary

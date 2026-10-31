@@ -50,7 +50,11 @@ data class LiveQuoteDto(
     @SerializedName("change_percent") val changePercent: Double,
     @SerializedName("is_realtime") val isRealtime: Boolean,
     @SerializedName("step") val step: Double? = null,
-    @SerializedName("lot_size") val lotSize: Int? = null
+    @SerializedName("lot_size") val lotSize: Int? = null,
+    @SerializedName("is_market_open") val isMarketOpen: Boolean? = null,
+    @SerializedName("market_status") val marketStatus: String? = null,
+    @SerializedName("session_label") val sessionLabel: String? = null,
+    @SerializedName("last_close_time") val lastCloseTime: String? = null
 )
 
 data class OptionChainResponseDto(
@@ -250,7 +254,11 @@ data class ChartDataResponseDto(
     @SerializedName("technical_score") val technicalScore: Double? = null,
     @SerializedName("target_price") val targetPrice: Double? = null,
     @SerializedName("stop_loss") val stopLoss: Double? = null,
-    @SerializedName("strategy_signals") val strategySignals: List<StrategySignalDto> = emptyList()
+    @SerializedName("strategy_signals") val strategySignals: List<StrategySignalDto> = emptyList(),
+    @SerializedName("is_market_open") val isMarketOpen: Boolean? = null,
+    @SerializedName("market_status") val marketStatus: String? = null,
+    @SerializedName("session_label") val sessionLabel: String? = null,
+    @SerializedName("last_close_time") val lastCloseTime: String? = null
 )
 
 data class MarketMoverItemDto(

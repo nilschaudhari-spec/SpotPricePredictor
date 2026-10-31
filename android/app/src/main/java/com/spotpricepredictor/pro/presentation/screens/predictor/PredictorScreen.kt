@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.spotpricepredictor.pro.data.preferences.WatchlistManager
+import com.spotpricepredictor.pro.domain.model.GainersLosersData
+import com.spotpricepredictor.pro.domain.model.MarketMoverItem
 import com.spotpricepredictor.pro.domain.model.ModelForecastBreakdown
 import com.spotpricepredictor.pro.domain.model.PredictionHorizon
 import com.spotpricepredictor.pro.domain.model.TrendDirection
@@ -64,6 +66,8 @@ fun PredictorScreen(
     val isAutoDetectActive by viewModel.isAutoDetectActive.collectAsState()
     val is1msStreamingActive by viewModel.is1msStreamingActive.collectAsState()
     val tickCounter by viewModel.tickCounter.collectAsState()
+    val marketStatus by viewModel.marketStatus.collectAsState()
+    val isDemoSimulation by viewModel.isDemoSimulation.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val categorySymbols by viewModel.categorySymbols.collectAsState()
 
@@ -209,18 +213,33 @@ fun PredictorScreen(
                     color = TextSecondary,
                     letterSpacing = 1.sp
                 )
+                val isOpen = marketStatus.isOpen
+                val isDemo = isDemoSimulation
+                val badgeText = when {
+                    isOpen && is1msStreamingActive -> "⚡ 1ms LIVE TICKS (#$tickCounter)"
+                    isOpen -> "⏸️ STREAM PAUSED"
+                    isDemo -> "🧪 DEMO TICKS (#$tickCounter)"
+                    else -> "🔴 CLOSED (Tap for Demo)"
+                }
+                val badgeColor = when {
+                    isOpen && is1msStreamingActive -> NeonEmerald
+                    isDemo -> AmberWarning
+                    isOpen -> AmberWarning
+                    else -> CrimsonAlert
+                }
+
                 Box(
                     modifier = Modifier
                         .clickable { viewModel.toggle1msStreaming() }
-                        .background(if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.15f) else AmberWarning.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                        .border(0.6.dp, if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.4f) else AmberWarning.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .border(0.6.dp, badgeColor.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = if (is1msStreamingActive) "⚡ 1ms LIVE TICKS (#$tickCounter)" else "PAUSED",
+                        text = badgeText,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (is1msStreamingActive) NeonEmerald else AmberWarning
+                        color = badgeColor
                     )
                 }
             }
@@ -669,6 +688,14 @@ fun PredictorScreen(
                 val isPositive = liveQuote!!.change >= 0
                 val color = if (isPositive) NeonEmerald else CrimsonAlert
                 val sign = if (isPositive) "+" else ""
+                val quoteStatusText = if (liveQuote!!.isMarketOpen) {
+                    "● LIVE $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%) • $lastSyncTime"
+                } else if (isDemoSimulation) {
+                    "🧪 DEMO $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%)"
+                } else {
+                    "🔴 CLOSED $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%) • Official Close"
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -680,7 +707,7 @@ fun PredictorScreen(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "● LIVE $sign${liveQuote!!.change} ($sign${liveQuote!!.changePercent}%) • $lastSyncTime",
+                            text = quoteStatusText,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = color
@@ -689,7 +716,16 @@ fun PredictorScreen(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(6.dp))
+        if (liveQuote != null && !liveQuote!!.isMarketOpen && !isDemoSimulation) {
+            Text(
+                text = "Market Closed • Showing official exchange close (${marketStatus.lastCloseTime}) • ${marketStatus.nextSession}",
+                fontSize = 9.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 2.dp, bottom = 4.dp)
+            )
+        } else {
+            Spacer(modifier = Modifier.height(6.dp))
+        }
 
         OutlinedTextField(
             value = spotPriceInput,

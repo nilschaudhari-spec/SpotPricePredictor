@@ -13,7 +13,8 @@ import javax.inject.Singleton
 @Singleton
 class MarketRepositoryImpl @Inject constructor(
     private val apiService: PredictorApiService,
-    private val historyDao: PredictionHistoryDao
+    private val historyDao: PredictionHistoryDao,
+    private val directClient: com.spotpricepredictor.pro.data.api.DirectMarketDataClient
 ) : MarketRepository {
 
     override suspend fun getOptionChain(
@@ -94,28 +95,57 @@ class MarketRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getRealtimeQuote(symbol: String): Result<LiveQuote> {
-        return try {
-            val response = apiService.getRealtimeQuote(symbol)
+        val sym = symbol.trim().uppercase()
+        val mStatus = MarketStatusHelper.getMarketStatus(sym)
+        try {
+            val response = apiService.getRealtimeQuote(sym)
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
-                Result.success(
+                return Result.success(
                     LiveQuote(
                         symbol = dto.symbol,
                         spotPrice = dto.spotPrice,
                         previousClose = dto.previousClose,
                         change = dto.change,
                         changePercent = dto.changePercent,
-                        isRealtime = dto.isRealtime,
+                        isRealtime = (dto.isMarketOpen ?: mStatus.isOpen) && dto.isRealtime,
                         step = dto.step,
-                        lotSize = dto.lotSize
+                        lotSize = dto.lotSize,
+                        isMarketOpen = dto.isMarketOpen ?: mStatus.isOpen,
+                        marketStatus = dto.marketStatus ?: mStatus.statusText,
+                        sessionLabel = dto.sessionLabel ?: mStatus.sessionLabel,
+                        lastCloseTime = dto.lastCloseTime ?: mStatus.lastCloseTime,
+                        nextSession = mStatus.nextSession
                     )
                 )
-            } else {
-                Result.failure(Exception("Failed to fetch live quote: ${response.code()} ${response.message()}"))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // Backend unreachable, fallback to direct public exchange API
         }
+
+        // Direct public exchange lookup (Yahoo Finance / NSE)
+        val directQuote = directClient.fetchDirectQuote(sym)
+        if (directQuote != null) {
+            return Result.success(directQuote)
+        }
+
+        // Offline default catalog fallback
+        val defaultSpot = StockCatalog.getDefaultSpot(sym)
+        return Result.success(
+            LiveQuote(
+                symbol = sym,
+                spotPrice = defaultSpot,
+                previousClose = defaultSpot,
+                change = 0.0,
+                changePercent = 0.0,
+                isRealtime = false,
+                isMarketOpen = mStatus.isOpen,
+                marketStatus = mStatus.statusText,
+                sessionLabel = mStatus.sessionLabel,
+                lastCloseTime = mStatus.lastCloseTime,
+                nextSession = mStatus.nextSession
+            )
+        )
     }
 
     override suspend fun predictSpotPrice(
@@ -435,8 +465,10 @@ class MarketRepositoryImpl @Inject constructor(
         interval: String,
         limit: Int
     ): Result<ChartData> {
-        return try {
-            val response = apiService.getChartWithIndicators(symbol, interval, limit)
+        val sym = symbol.trim().uppercase()
+        val mStatus = MarketStatusHelper.getMarketStatus(sym)
+        try {
+            val response = apiService.getChartWithIndicators(sym, interval, limit)
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
                 val candles = dto.candles.map { c ->
@@ -471,7 +503,7 @@ class MarketRepositoryImpl @Inject constructor(
                         rationale = it.rationale
                     )
                 }
-                Result.success(
+                return Result.success(
                     ChartData(
                         symbol = dto.symbol,
                         interval = dto.interval,
@@ -483,15 +515,34 @@ class MarketRepositoryImpl @Inject constructor(
                         technicalScore = dto.technicalScore ?: 0.0,
                         targetPrice = dto.targetPrice,
                         stopLoss = dto.stopLoss,
-                        strategySignals = strategySignals
+                        strategySignals = strategySignals,
+                        isMarketOpen = dto.isMarketOpen ?: mStatus.isOpen,
+                        marketStatus = dto.marketStatus ?: mStatus.statusText,
+                        sessionLabel = dto.sessionLabel ?: mStatus.sessionLabel,
+                        lastCloseTime = dto.lastCloseTime ?: mStatus.lastCloseTime
                     )
                 )
-            } else {
-                Result.success(DefaultTradeSuggestions.getFallbackChart(symbol, interval))
             }
         } catch (e: Exception) {
-            Result.success(DefaultTradeSuggestions.getFallbackChart(symbol, interval))
+            // Backend unreachable, attempt direct public exchange query
         }
+
+        // Direct public exchange candles & indicator engine
+        val directChart = directClient.fetchDirectChart(sym, interval, limit)
+        if (directChart != null) {
+            return Result.success(directChart)
+        }
+
+        // Offline fallback chart anchored to real market status
+        val fallback = DefaultTradeSuggestions.getFallbackChart(sym, interval)
+        return Result.success(
+            fallback.copy(
+                isMarketOpen = mStatus.isOpen,
+                marketStatus = mStatus.statusText,
+                sessionLabel = mStatus.sessionLabel,
+                lastCloseTime = mStatus.lastCloseTime
+            )
+        )
     }
 
     override suspend fun getGainersLosers(

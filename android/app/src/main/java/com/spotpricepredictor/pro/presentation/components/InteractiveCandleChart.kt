@@ -122,17 +122,23 @@ fun InteractiveCandleChart(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val isOpen = chartData.isMarketOpen
+                    val badgeBg = if (isOpen) NeonEmerald.copy(alpha = 0.15f) else CrimsonAlert.copy(alpha = 0.15f)
+                    val badgeBorder = if (isOpen) NeonEmerald.copy(alpha = 0.4f) else CrimsonAlert.copy(alpha = 0.4f)
+                    val badgeColor = if (isOpen) NeonEmerald else CrimsonAlert
+                    val badgeText = if (isOpen) "● 1ms LIVE TICKS" else "🔴 MARKET CLOSED"
+
                     Box(
                         modifier = Modifier
-                            .background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                            .border(0.8.dp, NeonEmerald.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                            .background(badgeBg, RoundedCornerShape(4.dp))
+                            .border(0.8.dp, badgeBorder, RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 1.dp)
                     ) {
                         Text(
-                            text = "● 1ms LIVE TICKS",
+                            text = badgeText,
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NeonEmerald
+                            color = badgeColor
                         )
                     }
 

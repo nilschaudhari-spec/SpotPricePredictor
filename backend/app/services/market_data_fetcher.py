@@ -16,26 +16,32 @@ class MarketDataFetcher:
     """
 
     TICKER_DEFAULTS = {
-        "NIFTY": {"spot": 22520.0, "step": 50, "iv": 14.2, "lot": 25},
-        "BANKNIFTY": {"spot": 55250.0, "step": 100, "iv": 16.5, "lot": 15},
-        "FINNIFTY": {"spot": 23600.0, "step": 50, "iv": 14.8, "lot": 40},
-        "MIDCPNIFTY": {"spot": 12200.0, "step": 25, "iv": 15.0, "lot": 75},
-        "SENSEX": {"spot": 74500.0, "step": 100, "iv": 13.8, "lot": 10},
-        "BANKEX": {"spot": 61200.0, "step": 100, "iv": 16.0, "lot": 15},
+        "NIFTY": {"spot": 23053.10, "step": 50, "iv": 13.8, "lot": 25},
+        "BANKNIFTY": {"spot": 54686.95, "step": 100, "iv": 15.2, "lot": 15},
+        "FINNIFTY": {"spot": 24712.20, "step": 50, "iv": 14.1, "lot": 40},
+        "MIDCPNIFTY": {"spot": 16513.30, "step": 25, "iv": 15.5, "lot": 75},
+        "SENSEX": {"spot": 74459.53, "step": 100, "iv": 13.5, "lot": 10},
+        "BANKEX": {"spot": 61415.25, "step": 100, "iv": 15.0, "lot": 15},
         "CRUDEOIL": {"spot": 5950.0, "step": 50, "iv": 28.0, "lot": 100},
         "GOLD": {"spot": 78600.0, "step": 100, "iv": 14.5, "lot": 100},
         "SILVER": {"spot": 94800.0, "step": 100, "iv": 22.0, "lot": 30},
         "NATURALGAS": {"spot": 245.0, "step": 5, "iv": 38.0, "lot": 1250},
         "COPPER": {"spot": 820.0, "step": 10, "iv": 20.0, "lot": 2500},
-        "USDINR": {"spot": 84.10, "step": 0.25, "iv": 5.2, "lot": 1000},
-        "RELIANCE": {"spot": 1170.0, "step": 20, "iv": 19.5, "lot": 250},
-        "TCS": {"spot": 2156.0, "step": 20, "iv": 17.2, "lot": 175},
-        "HDFCBANK": {"spot": 707.0, "step": 10, "iv": 18.0, "lot": 550},
-        "INFY": {"spot": 1023.0, "step": 20, "iv": 21.0, "lot": 400},
-        "SBIN": {"spot": 959.0, "step": 10, "iv": 20.0, "lot": 750},
-        "ITC": {"spot": 266.0, "step": 5, "iv": 16.0, "lot": 1600},
-        "WIPRO": {"spot": 162.0, "step": 2.5, "iv": 22.0, "lot": 1500},
-        "BAJFINANCE": {"spot": 960.0, "step": 10, "iv": 23.0, "lot": 125},
+        "USDINR": {"spot": 94.95, "step": 0.25, "iv": 5.2, "lot": 1000},
+        "RELIANCE": {"spot": 1164.90, "step": 20, "iv": 18.5, "lot": 250},
+        "TCS": {"spot": 2502.60, "step": 20, "iv": 16.8, "lot": 175},
+        "HDFCBANK": {"spot": 692.80, "step": 10, "iv": 17.5, "lot": 550},
+        "INFY": {"spot": 1185.00, "step": 20, "iv": 20.0, "lot": 400},
+        "SBIN": {"spot": 961.85, "step": 10, "iv": 19.5, "lot": 750},
+        "ICICIBANK": {"spot": 1398.00, "step": 20, "iv": 18.0, "lot": 700},
+        "BHARTIARTL": {"spot": 1973.70, "step": 20, "iv": 19.0, "lot": 475},
+        "ITC": {"spot": 265.60, "step": 5, "iv": 15.5, "lot": 1600},
+        "KOTAKBANK": {"spot": 461.60, "step": 10, "iv": 18.2, "lot": 400},
+        "LT": {"spot": 3871.70, "step": 50, "iv": 21.0, "lot": 150},
+        "WIPRO": {"spot": 198.31, "step": 2.5, "iv": 21.5, "lot": 1500},
+        "BAJFINANCE": {"spot": 939.10, "step": 10, "iv": 22.0, "lot": 125},
+        "TATASTEEL": {"spot": 167.60, "step": 2.5, "iv": 24.0, "lot": 5500},
+        "TATAMOTORS": {"spot": 980.00, "step": 10, "iv": 25.0, "lot": 1425},
     }
 
     _QUOTE_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -154,6 +160,9 @@ class MarketDataFetcher:
         else:
             step = 0.5
 
+        from app.services.market_status import get_market_status
+        m_status = get_market_status(sym)
+
         quote_data = {
             "symbol": sym,
             "spot_price": live_price,
@@ -163,7 +172,11 @@ class MarketDataFetcher:
             "step": default_info.get("step") if sym in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX"] else step,
             "iv": default_info.get("iv", 18.0),
             "lot_size": default_info.get("lot", 50),
-            "is_realtime": True
+            "is_realtime": m_status["is_open"],
+            "is_market_open": m_status["is_open"],
+            "market_status": m_status["status"],
+            "session_label": m_status["session_label"],
+            "last_close_time": m_status["last_close_time"]
         }
         cls._QUOTE_CACHE[sym] = {"data": quote_data, "timestamp": now}
         return quote_data
