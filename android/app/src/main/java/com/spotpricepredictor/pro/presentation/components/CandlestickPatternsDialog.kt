@@ -72,7 +72,7 @@ fun CandlestickPatternsDialog(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    text = "🕯️ CANDLESTICK PATTERNS",
+                                    text = "🕯️ CANDLESTICK & PRICE ACTION",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = ElectricCyan,
@@ -87,7 +87,7 @@ fun CandlestickPatternsDialog(
                                 }
                             }
                             Text(
-                                text = "High-Probability Buy & Sell Formations • Real-Time Scan",
+                                text = "Marubozu • Doji • Morning/Evening Star • Pin Bars • Trap Setups",
                                 fontSize = 10.sp,
                                 color = TextSecondary
                             )
@@ -110,20 +110,22 @@ fun CandlestickPatternsDialog(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Main Type Filter Tabs (ALL, BUY, SELL)
+                    // Main Type Filter Tabs (ALL, BUY, SELL, PRICE ACTION)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         listOf(
-                            "ALL" to "All Patterns",
-                            "BUY" to "🟢 BUY PATTERNS (4)",
-                            "SELL" to "🔴 SELL PATTERNS (4)"
+                            "ALL" to "All (14)",
+                            "BUY" to "🟢 BUY (7)",
+                            "SELL" to "🔴 SELL (7)",
+                            "PRICE_ACTION" to "⭐ Price Action"
                         ).forEach { (key, label) ->
                             val isSelected = selectedTypeFilter.equals(key, ignoreCase = true)
                             val activeColor = when (key) {
                                 "BUY" -> NeonEmerald
                                 "SELL" -> CrimsonAlert
+                                "PRICE_ACTION" -> RoyalViolet
                                 else -> ElectricCyan
                             }
 
@@ -148,7 +150,7 @@ fun CandlestickPatternsDialog(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 9.5.sp,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isSelected) activeColor else TextSecondary,
                                     maxLines = 1,
@@ -163,15 +165,22 @@ fun CandlestickPatternsDialog(
                     // Specific Pattern Chips Carousel
                     val patternChips = when (selectedTypeFilter.uppercase()) {
                         "BUY" -> listOf(
-                            "ALL", "Hammer", "Inverse Hammer", "Low break close upside", "Bullish Harami"
+                            "ALL", "Hammer", "Inverse Hammer", "Bullish Marubozu", "Dragonfly Doji", "Morning Star", "Low break close upside", "Bullish Harami"
                         )
                         "SELL" -> listOf(
-                            "ALL", "Hanging Man", "Shooting Star", "High break, close Downside", "Bearish Harami"
+                            "ALL", "Shooting Star", "Hanging Man", "Bearish Marubozu", "Gravestone Doji", "Evening Star", "High break, close Downside", "Bearish Harami"
+                        )
+                        "PRICE_ACTION" -> listOf(
+                            "ALL", "Morning Star", "Evening Star", "Low break close upside", "High break, close Downside"
                         )
                         else -> listOf(
                             "ALL",
-                            "Hammer", "Inverse Hammer", "Low break close upside", "Bullish Harami",
-                            "Hanging Man", "Shooting Star", "High break, close Downside", "Bearish Harami"
+                            "Bullish Marubozu", "Bearish Marubozu",
+                            "Dragonfly Doji", "Gravestone Doji",
+                            "Morning Star", "Evening Star",
+                            "Hammer", "Inverse Hammer", "Shooting Star", "Hanging Man",
+                            "Low break close upside", "High break, close Downside",
+                            "Bullish Harami", "Bearish Harami"
                         )
                     }
 
@@ -211,13 +220,19 @@ fun CandlestickPatternsDialog(
                     val allPatterns = when (selectedTypeFilter.uppercase()) {
                         "BUY" -> data?.buyPatterns ?: emptyList()
                         "SELL" -> data?.sellPatterns ?: emptyList()
+                        "PRICE_ACTION" -> data?.allPatterns?.filter { it.category.contains("PRICE ACTION", ignoreCase = true) } ?: emptyList()
                         else -> data?.allPatterns ?: emptyList()
                     }
 
                     val filteredList = if (selectedNameFilter.equals("ALL", ignoreCase = true)) {
                         allPatterns
                     } else {
-                        allPatterns.filter { it.patternName.equals(selectedNameFilter, ignoreCase = true) }
+                        allPatterns.filter {
+                            it.patternName.equals(selectedNameFilter, ignoreCase = true) ||
+                            (selectedNameFilter.equals("Marubozu", ignoreCase = true) && it.patternName.contains("Marubozu", ignoreCase = true)) ||
+                            (selectedNameFilter.contains("Doji", ignoreCase = true) && it.patternName.contains("Doji", ignoreCase = true)) ||
+                            (selectedNameFilter.contains("Dogi", ignoreCase = true) && it.patternName.contains("Doji", ignoreCase = true))
+                        }
                     }
 
                     if (filteredList.isEmpty()) {
@@ -228,7 +243,7 @@ fun CandlestickPatternsDialog(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (isLoading) "Scanning candlestick patterns..." else "No matching pattern formations found",
+                                text = if (isLoading) "Scanning candlestick patterns & price action..." else "No matching pattern formations found",
                                 fontSize = 12.sp,
                                 color = TextSecondary
                             )
@@ -261,6 +276,7 @@ fun PatternCard(
     onSelectStock: () -> Unit
 ) {
     val isBuy = pattern.patternType.uppercase() == "BUY"
+    val isPriceAction = pattern.category.contains("PRICE ACTION", ignoreCase = true)
     val biasColor = if (isBuy) NeonEmerald else CrimsonAlert
     val biasBg = biasColor.copy(alpha = 0.15f)
 
@@ -277,7 +293,7 @@ fun PatternCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         text = pattern.symbol,
                         fontSize = 14.sp,
@@ -289,20 +305,36 @@ fun PatternCard(
                         modifier = Modifier
                             .background(biasBg, RoundedCornerShape(4.dp))
                             .border(0.8.dp, biasColor, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = if (isBuy) "🟢 BUY SETUP" else "🔴 SELL SETUP",
+                            text = if (isBuy) "🟢 BUY" else "🔴 SELL",
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = biasColor
                         )
                     }
 
+                    if (isPriceAction) {
+                        Box(
+                            modifier = Modifier
+                                .background(RoyalViolet.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                .border(0.8.dp, RoyalViolet.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "⭐ PRICE ACTION",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = RoyalViolet
+                            )
+                        }
+                    }
+
                     Box(
                         modifier = Modifier
                             .background(SurfaceDark, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = pattern.timeframe,
@@ -453,10 +485,11 @@ fun PatternCard(
 private fun CandleVisualizer(patternName: String, isBuy: Boolean) {
     val green = NeonEmerald
     val red = CrimsonAlert
+    val yellow = AmberWarning
 
     Canvas(
         modifier = Modifier
-            .size(width = 38.dp, height = 48.dp)
+            .size(width = 42.dp, height = 48.dp)
             .background(DeepObsidian, RoundedCornerShape(4.dp))
             .padding(4.dp)
     ) {
@@ -465,64 +498,108 @@ private fun CandleVisualizer(patternName: String, isBuy: Boolean) {
         val midX = w / 2f
 
         when {
-            // Hammer: Small upper body, long lower wick
+            // 1. Morning Star (3 candles: Tall Red, Star, Tall Green > 50%)
+            patternName.contains("Morning Star", ignoreCase = true) -> {
+                // 1st Red
+                drawLine(red, Offset(w * 0.22f, 4f), Offset(w * 0.22f, h - 14f), strokeWidth = 2f)
+                drawRect(red, Offset(w * 0.22f - 4f, 8f), Size(8f, h * 0.48f))
+                // 2nd Star / Doji lower
+                drawLine(yellow, Offset(w * 0.50f, h - 14f), Offset(w * 0.50f, h - 2f), strokeWidth = 1.8f)
+                drawRect(yellow, Offset(w * 0.50f - 3f, h - 10f), Size(6f, 5f))
+                // 3rd Green piercing >50%
+                drawLine(green, Offset(w * 0.78f, 6f), Offset(w * 0.78f, h - 6f), strokeWidth = 2f)
+                drawRect(green, Offset(w * 0.78f - 4f, 10f), Size(8f, h * 0.52f))
+            }
+
+            // 2. Evening Star (3 candles: Tall Green, Star, Tall Red > 50%)
+            patternName.contains("Evening Star", ignoreCase = true) -> {
+                // 1st Green
+                drawLine(green, Offset(w * 0.22f, 14f), Offset(w * 0.22f, h - 4f), strokeWidth = 2f)
+                drawRect(green, Offset(w * 0.22f - 4f, h * 0.36f), Size(8f, h * 0.48f))
+                // 2nd Star / Doji upper
+                drawLine(yellow, Offset(w * 0.50f, 2f), Offset(w * 0.50f, 14f), strokeWidth = 1.8f)
+                drawRect(yellow, Offset(w * 0.50f - 3f, 5f), Size(6f, 5f))
+                // 3rd Red plunging >50%
+                drawLine(red, Offset(w * 0.78f, 8f), Offset(w * 0.78f, h - 4f), strokeWidth = 2f)
+                drawRect(red, Offset(w * 0.78f - 4f, 12f), Size(8f, h * 0.52f))
+            }
+
+            // 3. Bullish Marubozu (Full green candle with no wicks)
+            patternName.contains("Bullish Marubozu", ignoreCase = true) || (patternName.contains("Marubozu", ignoreCase = true) && isBuy) -> {
+                drawRect(green, Offset(midX - 9f, 4f), Size(18f, h - 8f))
+            }
+
+            // 4. Bearish Marubozu (Full red candle with no wicks)
+            patternName.contains("Bearish Marubozu", ignoreCase = true) || (patternName.contains("Marubozu", ignoreCase = true) && !isBuy) -> {
+                drawRect(red, Offset(midX - 9f, 4f), Size(18f, h - 8f))
+            }
+
+            // 5. Dragonfly Doji (Open/High/Close at top, long lower wick)
+            patternName.contains("Dragonfly", ignoreCase = true) || (patternName.contains("Doji", ignoreCase = true) && isBuy) || (patternName.contains("Dogi", ignoreCase = true) && isBuy) -> {
+                // Long lower wick
+                drawLine(green, Offset(midX, 4f), Offset(midX, h - 2f), strokeWidth = 2.5f)
+                // Crossbar at top
+                drawLine(green, Offset(midX - 10f, 5f), Offset(midX + 10f, 5f), strokeWidth = 3.5f)
+            }
+
+            // 6. Gravestone Doji (Open/Low/Close at bottom, long upper wick)
+            patternName.contains("Gravestone", ignoreCase = true) || (patternName.contains("Doji", ignoreCase = true) && !isBuy) || (patternName.contains("Dogi", ignoreCase = true) && !isBuy) -> {
+                // Long upper wick
+                drawLine(red, Offset(midX, 2f), Offset(midX, h - 4f), strokeWidth = 2.5f)
+                // Crossbar at bottom
+                drawLine(red, Offset(midX - 10f, h - 5f), Offset(midX + 10f, h - 5f), strokeWidth = 3.5f)
+            }
+
+            // 7. Hammer: Small upper body, long lower wick
             patternName.contains("Hammer", ignoreCase = true) && !patternName.contains("Inverse", ignoreCase = true) -> {
                 drawLine(green, Offset(midX, 4f), Offset(midX, h - 2f), strokeWidth = 2.5f)
                 drawRect(green, Offset(midX - 7f, 4f), Size(14f, 12f))
             }
 
-            // Inverse Hammer: Small lower body, long upper wick
+            // 8. Inverse Hammer: Small lower body, long upper wick
             patternName.contains("Inverse", ignoreCase = true) -> {
                 drawLine(green, Offset(midX, 2f), Offset(midX, h - 4f), strokeWidth = 2.5f)
                 drawRect(green, Offset(midX - 7f, h - 16f), Size(14f, 12f))
             }
 
-            // Low break close upside: Break below line and reclaim
+            // 9. Low break close upside: Break below line and reclaim
             patternName.contains("Low break", ignoreCase = true) -> {
-                // Support line
                 drawLine(Color.Gray.copy(alpha = 0.5f), Offset(2f, h * 0.6f), Offset(w - 2f, h * 0.6f), strokeWidth = 1.5f)
-                // Reclaiming candle
                 drawLine(green, Offset(midX, 2f), Offset(midX, h - 2f), strokeWidth = 2.5f)
                 drawRect(green, Offset(midX - 7f, 6f), Size(14f, 16f))
             }
 
-            // Bullish Harami: Tall red + small green inside
+            // 10. Bullish Harami: Tall red + small green inside
             patternName.contains("Bullish Harami", ignoreCase = true) -> {
-                // Tall Red mother
                 drawLine(red, Offset(w * 0.35f, 2f), Offset(w * 0.35f, h - 2f), strokeWidth = 2f)
                 drawRect(red, Offset(w * 0.35f - 6f, 6f), Size(12f, h - 14f))
-                // Small Green baby
                 drawLine(green, Offset(w * 0.72f, h * 0.35f), Offset(w * 0.72f, h * 0.68f), strokeWidth = 2f)
                 drawRect(green, Offset(w * 0.72f - 4f, h * 0.42f), Size(8f, 10f))
             }
 
-            // Shooting Star: Long upper wick, small lower body
+            // 11. Shooting Star: Long upper wick, small lower body
             patternName.contains("Shooting Star", ignoreCase = true) -> {
                 drawLine(red, Offset(midX, 2f), Offset(midX, h - 4f), strokeWidth = 2.5f)
                 drawRect(red, Offset(midX - 7f, h - 16f), Size(14f, 12f))
             }
 
-            // Hanging Man: Small upper body, long lower wick at top
+            // 12. Hanging Man: Small upper body, long lower wick at top
             patternName.contains("Hanging Man", ignoreCase = true) -> {
                 drawLine(red, Offset(midX, 4f), Offset(midX, h - 2f), strokeWidth = 2.5f)
                 drawRect(red, Offset(midX - 7f, 4f), Size(14f, 12f))
             }
 
-            // High break close downside: Break above line and dump
+            // 13. High break close downside: Break above line and dump
             patternName.contains("High break", ignoreCase = true) -> {
-                // Resistance line
                 drawLine(Color.Gray.copy(alpha = 0.5f), Offset(2f, h * 0.4f), Offset(w - 2f, h * 0.4f), strokeWidth = 1.5f)
-                // Dump candle
                 drawLine(red, Offset(midX, 2f), Offset(midX, h - 2f), strokeWidth = 2.5f)
                 drawRect(red, Offset(midX - 7f, h * 0.45f), Size(14f, 16f))
             }
 
-            // Bearish Harami: Tall green + small red inside
+            // 14. Bearish Harami: Tall green + small red inside
             patternName.contains("Bearish Harami", ignoreCase = true) -> {
-                // Tall Green mother
                 drawLine(green, Offset(w * 0.35f, 2f), Offset(w * 0.35f, h - 2f), strokeWidth = 2f)
                 drawRect(green, Offset(w * 0.35f - 6f, 6f), Size(12f, h - 14f))
-                // Small Red baby
                 drawLine(red, Offset(w * 0.72f, h * 0.35f), Offset(w * 0.72f, h * 0.68f), strokeWidth = 2f)
                 drawRect(red, Offset(w * 0.72f - 4f, h * 0.42f), Size(8f, 10f))
             }
@@ -535,4 +612,3 @@ private fun CandleVisualizer(patternName: String, isBuy: Boolean) {
         }
     }
 }
-

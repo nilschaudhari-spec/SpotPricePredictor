@@ -442,8 +442,9 @@ class ResultsAndEventsResponse(BaseModel):
 
 class PatternDetectionItem(BaseModel):
     pattern_id: str
-    pattern_name: str # "Hammer", "Inverse Hammer", "Low break close upside", "Bullish Harami", "Hanging Man", "Shooting Star", "High break, close Downside", "Bearish Harami"
+    pattern_name: str # e.g. "Hammer", "Bullish Marubozu", "Dragonfly Doji", "Morning Star", "Evening Star"
     pattern_type: str # "BUY" or "SELL"
+    category: str = "CANDLESTICK PATTERN" # "CANDLESTICK PATTERN" or "PRICE ACTION TECHNIQUE"
     symbol: str
     company_name: str
     timeframe: str = "15m"

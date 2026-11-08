@@ -966,7 +966,7 @@ fun PredictorScreen(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "🕯️ CANDLESTICK & PRICE ACTION PATTERNS",
+                                text = "🕯️ CANDLESTICK & PRICE ACTION",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = TextPrimary,
@@ -977,7 +977,7 @@ fun PredictorScreen(
                             }
                         }
                         Text(
-                            text = "Hammer, Harami, Rejection Wicks & False Breakouts",
+                            text = "Marubozu, Doji, Morning & Evening Star, Rejections",
                             fontSize = 9.sp,
                             color = TextSecondary
                         )
@@ -992,7 +992,7 @@ fun PredictorScreen(
                             .padding(horizontal = 7.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = "EXPLORE ALL (8) ↗",
+                            text = "EXPLORE ALL (14) ↗",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = ElectricCyan
@@ -1002,71 +1002,59 @@ fun PredictorScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Pattern Type Selector (BUY vs SELL)
+                // Pattern Type Selector (BUY vs SELL vs PRICE ACTION)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Buy Patterns Tab
-                    val isBuySelected = homePatternTab == "BUY"
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { homePatternTab = "BUY" }
-                            .background(
-                                if (isBuySelected) NeonEmerald.copy(alpha = 0.2f) else CardBackground,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                1.dp,
-                                if (isBuySelected) NeonEmerald else CardBorder,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "🟢 BUY PATTERNS (4)",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isBuySelected) NeonEmerald else TextSecondary
-                        )
-                    }
+                    listOf(
+                        "BUY" to "🟢 BUY (7)",
+                        "SELL" to "🔴 SELL (7)",
+                        "PRICE_ACTION" to "⭐ Price Action"
+                    ).forEach { (tabKey, tabLabel) ->
+                        val isSelected = homePatternTab == tabKey
+                        val activeColor = when (tabKey) {
+                            "BUY" -> NeonEmerald
+                            "SELL" -> CrimsonAlert
+                            else -> RoyalViolet
+                        }
 
-                    // Sell Patterns Tab
-                    val isSellSelected = homePatternTab == "SELL"
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { homePatternTab = "SELL" }
-                            .background(
-                                if (isSellSelected) CrimsonAlert.copy(alpha = 0.2f) else CardBackground,
-                                RoundedCornerShape(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { homePatternTab = tabKey }
+                                .background(
+                                    if (isSelected) activeColor.copy(alpha = 0.2f) else CardBackground,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) activeColor else CardBorder,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tabLabel,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) activeColor else TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            .border(
-                                1.dp,
-                                if (isSellSelected) CrimsonAlert else CardBorder,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "🔴 SELL PATTERNS (4)",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSellSelected) CrimsonAlert else TextSecondary
-                        )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // List of patterns for selected tab
-                val currentList = if (homePatternTab == "BUY") {
-                    patternScanner?.buyPatterns ?: emptyList()
-                } else {
-                    patternScanner?.sellPatterns ?: emptyList()
+                val currentList = when (homePatternTab) {
+                    "BUY" -> patternScanner?.buyPatterns ?: emptyList()
+                    "SELL" -> patternScanner?.sellPatterns ?: emptyList()
+                    "PRICE_ACTION" -> patternScanner?.allPatterns?.filter { it.category.contains("PRICE ACTION", ignoreCase = true) } ?: emptyList()
+                    else -> patternScanner?.allPatterns ?: emptyList()
                 }
 
                 if (currentList.isEmpty()) {
@@ -1088,6 +1076,7 @@ fun PredictorScreen(
                         items(currentList) { pat ->
                             val isSelected = pat.symbol.equals(selectedSymbol, ignoreCase = true)
                             val isBuy = pat.patternType == "BUY"
+                            val isPriceAction = pat.category.contains("PRICE ACTION", ignoreCase = true)
                             val accentColor = if (isBuy) NeonEmerald else CrimsonAlert
 
                             Card(
@@ -1131,14 +1120,35 @@ fun PredictorScreen(
 
                                     Spacer(modifier = Modifier.height(3.dp))
 
-                                    Text(
-                                        text = pat.patternName,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentColor,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = pat.patternName,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = accentColor,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        if (isPriceAction) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .background(RoyalViolet.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                                    .padding(horizontal = 3.dp, vertical = 1.dp)
+                                            ) {
+                                                Text(
+                                                    text = "⭐ PA",
+                                                    fontSize = 7.5.sp,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = RoyalViolet
+                                                )
+                                            }
+                                        }
+                                    }
 
                                     Spacer(modifier = Modifier.height(4.dp))
 

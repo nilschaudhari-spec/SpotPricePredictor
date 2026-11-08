@@ -259,6 +259,7 @@ data class PatternDetectionItem(
     val patternId: String,
     val patternName: String,
     val patternType: String, // "BUY" or "SELL"
+    val category: String = "CANDLESTICK PATTERN", // "CANDLESTICK PATTERN" or "PRICE ACTION TECHNIQUE"
     val symbol: String,
     val companyName: String,
     val timeframe: String = "15m",

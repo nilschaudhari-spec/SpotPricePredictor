@@ -420,6 +420,7 @@ data class PatternDetectionItemDto(
     @SerializedName("pattern_id") val patternId: String,
     @SerializedName("pattern_name") val patternName: String,
     @SerializedName("pattern_type") val patternType: String,
+    @SerializedName("category") val category: String? = null,
     @SerializedName("symbol") val symbol: String,
     @SerializedName("company_name") val companyName: String,
     @SerializedName("timeframe") val timeframe: String = "15m",

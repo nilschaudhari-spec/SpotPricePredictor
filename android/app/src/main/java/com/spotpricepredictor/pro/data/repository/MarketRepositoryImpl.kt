@@ -996,6 +996,7 @@ class MarketRepositoryImpl @Inject constructor(
                     patternId = it.patternId,
                     patternName = it.patternName,
                     patternType = it.patternType,
+                    category = it.category ?: "CANDLESTICK PATTERN",
                     symbol = it.symbol,
                     companyName = it.companyName,
                     timeframe = it.timeframe,
@@ -1043,11 +1044,12 @@ class MarketRepositoryImpl @Inject constructor(
         }
 
         val allItems = listOf(
-            // 1. Buy Patterns
+            // 1. Buy Patterns & Price Action Techniques
             PatternDetectionItem(
                 patternId = "PAT_HAMMER",
                 patternName = "Hammer",
                 patternType = "BUY",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1068,6 +1070,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_INV_HAMMER",
                 patternName = "Inverse Hammer",
                 patternType = "BUY",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1088,6 +1091,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_LOW_BREAK",
                 patternName = "Low break close upside",
                 patternType = "BUY",
+                category = "PRICE ACTION TECHNIQUE",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1108,6 +1112,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_BULL_HARAMI",
                 patternName = "Bullish Harami",
                 patternType = "BUY",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "1h",
@@ -1124,12 +1129,76 @@ class MarketRepositoryImpl @Inject constructor(
                 tradingRule = "Buy on breakout above the mother candle midpoint/high. Stop Loss at low.",
                 timestamp = "1h Live Bar"
             ),
+            PatternDetectionItem(
+                patternId = "PAT_BULL_MARUBOZU",
+                patternName = "Bullish Marubozu",
+                patternType = "BUY",
+                category = "CANDLESTICK PATTERN",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "15m",
+                reliabilityPct = 87.5,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 1.002,
+                stopLoss = spot * 0.982,
+                target1 = spot * 1.028,
+                target2 = spot * 1.048,
+                riskRewardRatio = "1:2.4",
+                candleAnatomy = "Full tall green candle with zero upper and lower shadows. Open equals Low and Close equals High.",
+                description = "Bullish Marubozu reflects pure unconditional buyer dominance from open to close. Buyers aggressively accumulated without allowing any pullback.",
+                tradingRule = "Enter long on continuation above Marubozu close. Stop loss strictly below candle open.",
+                timestamp = "15m Live Bar"
+            ),
+            PatternDetectionItem(
+                patternId = "PAT_DRAGONFLY_DOJI",
+                patternName = "Dragonfly Doji",
+                patternType = "BUY",
+                category = "CANDLESTICK PATTERN",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "15m",
+                reliabilityPct = 83.0,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 1.003,
+                stopLoss = spot * 0.989,
+                target1 = spot * 1.024,
+                target2 = spot * 1.042,
+                riskRewardRatio = "1:2.3",
+                candleAnatomy = "Open, High, and Close are virtually equal at the upper extreme with an elongated lower shadow (3x body) and zero upper wick.",
+                description = "Dragonfly Doji represents aggressive price rejection. Bears forced prices sharply lower, but dip-buyers absorbed all supply and drove price back to session highs.",
+                tradingRule = "Buy on breakout above Dragonfly high. Stop loss below lower shadow extreme.",
+                timestamp = "15m Live Bar"
+            ),
+            PatternDetectionItem(
+                patternId = "PAT_MORNING_STAR",
+                patternName = "Morning Star",
+                patternType = "BUY",
+                category = "PRICE ACTION TECHNIQUE",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "30m",
+                reliabilityPct = 89.5,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 1.004,
+                stopLoss = spot * 0.986,
+                target1 = spot * 1.032,
+                target2 = spot * 1.056,
+                riskRewardRatio = "1:2.8",
+                candleAnatomy = "3-Candle Price Action: 1) Tall red bearish bar, 2) Lower gapped indecision star/doji, 3) Decisive green candle closing > 50% into candle 1.",
+                description = "Morning Star is a premier multi-candle Price Action reversal technique marking complete transition of market dominance from exhausted bears to aggressive institutional buyers.",
+                tradingRule = "Enter long on close of 3rd candle. Stop loss below lowest low of the star cluster.",
+                timestamp = "30m Live Bar"
+            ),
 
-            // 2. Sell Patterns
+            // 2. Sell Patterns & Price Action Techniques
             PatternDetectionItem(
                 patternId = "PAT_HANGING_MAN",
                 patternName = "Hanging Man",
                 patternType = "SELL",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1150,6 +1219,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_SHOOTING_STAR",
                 patternName = "Shooting Star",
                 patternType = "SELL",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1170,6 +1240,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_HIGH_BREAK",
                 patternName = "High break, close Downside",
                 patternType = "SELL",
+                category = "PRICE ACTION TECHNIQUE",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "15m",
@@ -1190,6 +1261,7 @@ class MarketRepositoryImpl @Inject constructor(
                 patternId = "PAT_BEAR_HARAMI",
                 patternName = "Bearish Harami",
                 patternType = "SELL",
+                category = "CANDLESTICK PATTERN",
                 symbol = sym,
                 companyName = "$sym Ltd",
                 timeframe = "1h",
@@ -1205,20 +1277,84 @@ class MarketRepositoryImpl @Inject constructor(
                 description = "Buying exhaustion inside-bar pattern. Bullish trend expansion has stalled completely, signaling imminent profit booking or reversal.",
                 tradingRule = "Sell short on breakdown below baby candle low. Stop Loss at mother candle high.",
                 timestamp = "1h Live Bar"
+            ),
+            PatternDetectionItem(
+                patternId = "PAT_BEAR_MARUBOZU",
+                patternName = "Bearish Marubozu",
+                patternType = "SELL",
+                category = "CANDLESTICK PATTERN",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "15m",
+                reliabilityPct = 88.0,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 0.998,
+                stopLoss = spot * 1.018,
+                target1 = spot * 0.972,
+                target2 = spot * 0.952,
+                riskRewardRatio = "1:2.4",
+                candleAnatomy = "Full tall red candle with zero upper and lower shadows. Open equals High and Close equals Low.",
+                description = "Bearish Marubozu indicates absolute seller dominance. Heavy institutional dumping flooded the session, closing right at the session low.",
+                tradingRule = "Enter short on continuation below Marubozu close. Stop loss strictly above candle open.",
+                timestamp = "15m Live Bar"
+            ),
+            PatternDetectionItem(
+                patternId = "PAT_GRAVESTONE_DOJI",
+                patternName = "Gravestone Doji",
+                patternType = "SELL",
+                category = "CANDLESTICK PATTERN",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "15m",
+                reliabilityPct = 84.5,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 0.997,
+                stopLoss = spot * 1.011,
+                target1 = spot * 0.976,
+                target2 = spot * 0.958,
+                riskRewardRatio = "1:2.3",
+                candleAnatomy = "Open, Low, and Close are virtually equal at lower extreme with an elongated upper shadow (3x body) and zero lower wick.",
+                description = "Gravestone Doji reflects total buyer exhaustion at resistance. Bulls attempted an upward rally, but sellers overwhelmed them and closed the session at the lows.",
+                tradingRule = "Sell short on break below Gravestone low. Stop loss above upper shadow extreme.",
+                timestamp = "15m Live Bar"
+            ),
+            PatternDetectionItem(
+                patternId = "PAT_EVENING_STAR",
+                patternName = "Evening Star",
+                patternType = "SELL",
+                category = "PRICE ACTION TECHNIQUE",
+                symbol = sym,
+                companyName = "$sym Ltd",
+                timeframe = "30m",
+                reliabilityPct = 90.0,
+                status = "CONFIRMED",
+                currentPrice = spot,
+                triggerPrice = spot * 0.996,
+                stopLoss = spot * 1.014,
+                target1 = spot * 0.968,
+                target2 = spot * 0.944,
+                riskRewardRatio = "1:2.8",
+                candleAnatomy = "3-Candle Price Action: 1) Tall green bullish bar, 2) Upper gapped indecision star/doji, 3) Decisive red candle closing > 50% into candle 1.",
+                description = "Evening Star is a premier multi-candle Price Action reversal technique signaling complete exhaustion of buyers and heavy institutional distribution.",
+                tradingRule = "Enter short on completion of 3rd candle. Stop loss above highest high of the star cluster.",
+                timestamp = "30m Live Bar"
             )
         )
 
-        val filtered = when (patternType?.uppercase()) {
-            "BUY" -> allItems.filter { it.patternType == "BUY" }
-            "SELL" -> allItems.filter { it.patternType == "SELL" }
+        val filtered = when {
+            patternType?.equals("BUY", ignoreCase = true) == true -> allItems.filter { it.patternType == "BUY" }
+            patternType?.equals("SELL", ignoreCase = true) == true -> allItems.filter { it.patternType == "SELL" }
+            patternType?.contains("PRICE", ignoreCase = true) == true -> allItems.filter { it.category.contains("PRICE ACTION", ignoreCase = true) }
             else -> allItems
         }
 
         return PatternScannerData(
             symbol = symbol,
             totalDetected = filtered.size,
-            buyPatterns = filtered.filter { it.patternType == "BUY" },
-            sellPatterns = filtered.filter { it.patternType == "SELL" },
+            buyPatterns = allItems.filter { it.patternType == "BUY" },
+            sellPatterns = allItems.filter { it.patternType == "SELL" },
             allPatterns = filtered
         )
     }
