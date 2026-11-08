@@ -38,6 +38,10 @@ fun OptionChainScreen(
     val selectedExpiryDate by viewModel.selectedExpiryDate.collectAsState()
     val selectedDaysToExpiry by viewModel.selectedDaysToExpiry.collectAsState()
     val lastSyncTime by viewModel.lastSyncTime.collectAsState()
+    val is1msStreamingActive by viewModel.is1msStreamingActive.collectAsState()
+    val tickCounter by viewModel.tickCounter.collectAsState()
+    val marketStatus by viewModel.marketStatus.collectAsState()
+    val isDemoSimulation by viewModel.isDemoSimulation.collectAsState()
 
     var showAddStockDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -83,27 +87,59 @@ fun OptionChainScreen(
                     )
                     Box(
                         modifier = Modifier
-                            .background(NeonEmerald.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                            .border(1.dp, NeonEmerald.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                            .background(
+                                if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.15f) else AmberWarning.copy(alpha = 0.15f),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.4f) else AmberWarning.copy(alpha = 0.4f),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "● LIVE • $lastSyncTime",
+                            text = if (is1msStreamingActive) "⚡ 1ms STREAM ACTIVE • Tick #$tickCounter" else "⏸️ 1ms PAUSED",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NeonEmerald
+                            color = if (is1msStreamingActive) NeonEmerald else AmberWarning
                         )
                     }
                 }
             }
 
-            IconButton(
-                onClick = { viewModel.loadOptionChain(selectedSymbol) },
-                modifier = Modifier
-                    .background(CardBackground, RoundedCornerShape(10.dp))
-                    .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
-            ) {
-                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = ElectricCyan)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                // 1ms Stream Toggle Button
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.2f) else CardBackground,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .border(
+                            1.dp,
+                            if (is1msStreamingActive) NeonEmerald else CardBorder,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .clickable { viewModel.toggle1msStreaming() }
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = if (is1msStreamingActive) "⚡ 1ms ON" else "⚡ 1ms OFF",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = if (is1msStreamingActive) NeonEmerald else TextSecondary
+                    )
+                }
+
+                IconButton(
+                    onClick = { viewModel.loadOptionChain(selectedSymbol) },
+                    modifier = Modifier
+                        .background(CardBackground, RoundedCornerShape(10.dp))
+                        .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                ) {
+                    Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = ElectricCyan)
+                }
             }
         }
 

@@ -12,7 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +35,20 @@ fun CorporateActionsDialog(
     onStockSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var selectedActionForDetail by remember { mutableStateOf<CorporateActionItem?>(null) }
+
+    if (selectedActionForDetail != null) {
+        CorporateActionDetailDialog(
+            action = selectedActionForDetail!!,
+            onDismiss = { selectedActionForDetail = null },
+            onPredictStock = { symbol ->
+                selectedActionForDetail = null
+                onStockSelected(symbol)
+                onDismiss()
+            }
+        )
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -174,9 +188,8 @@ fun CorporateActionsDialog(
                             items(actions) { action ->
                                 CorporateActionCard(
                                     action = action,
-                                    onSelectStock = {
-                                        onStockSelected(action.symbol)
-                                        onDismiss()
+                                    onShowDetail = {
+                                        selectedActionForDetail = action
                                     }
                                 )
                             }
@@ -191,20 +204,21 @@ fun CorporateActionsDialog(
 @Composable
 private fun CorporateActionCard(
     action: CorporateActionItem,
-    onSelectStock: () -> Unit
+    onShowDetail: () -> Unit
 ) {
     val (typeColor, typeBg) = when (action.actionType.uppercase()) {
         "DIVIDEND" -> NeonEmerald to NeonEmerald.copy(alpha = 0.15f)
         "BONUS" -> RoyalViolet to RoyalViolet.copy(alpha = 0.15f)
         "SPLIT" -> ElectricCyan to ElectricCyan.copy(alpha = 0.15f)
         "RIGHTS" -> AmberWarning to AmberWarning.copy(alpha = 0.15f)
+        "BUYBACK" -> Color(0xFF00E5FF) to Color(0xFF00E5FF).copy(alpha = 0.15f)
         else -> TextSecondary to TextSecondary.copy(alpha = 0.15f)
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSelectStock() },
+            .clickable { onShowDetail() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         border = BorderStroke(1.dp, CardBorder)
@@ -294,17 +308,33 @@ private fun CorporateActionCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .background(SurfaceDark, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = action.impact,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextSecondary
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .background(SurfaceDark, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = action.impact,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .border(0.6.dp, ElectricCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Details ➔",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElectricCyan
+                        )
+                    }
                 }
             }
         }

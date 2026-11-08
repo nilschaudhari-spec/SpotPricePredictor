@@ -51,6 +51,8 @@ import com.spotpricepredictor.pro.presentation.components.ResultsAndEventsDialog
 import com.spotpricepredictor.pro.presentation.components.CandlestickPatternsDialog
 import com.spotpricepredictor.pro.presentation.components.ProStrategiesDialog
 import com.spotpricepredictor.pro.presentation.components.OptionsHubDialog
+import com.spotpricepredictor.pro.presentation.components.NewsDetailDialog
+import com.spotpricepredictor.pro.presentation.components.MarketNewsBriefingDialog
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
@@ -114,6 +116,13 @@ fun PredictorScreen(
     val showOptionsHubModal by viewModel.showOptionsHubModal.collectAsState()
     val selectedStrategyTab by viewModel.selectedStrategyTab.collectAsState()
     val selectedOptionsTab by viewModel.selectedOptionsTab.collectAsState()
+
+    val liveOptionChain by viewModel.liveOptionChain.collectAsState()
+    val isOptionChainLoading by viewModel.isOptionChainLoading.collectAsState()
+    val marketNews by viewModel.marketNews.collectAsState()
+    val isNewsLoading by viewModel.isNewsLoading.collectAsState()
+    val showNewsBriefingModal by viewModel.showNewsBriefingModal.collectAsState()
+    val selectedNewsItemForDetail by viewModel.selectedNewsItemForDetail.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -256,9 +265,34 @@ fun PredictorScreen(
         OptionsHubDialog(
             data = proStrategies,
             isLoading = isProStrategiesLoading,
+            liveOptionChain = liveOptionChain,
+            tickCounter = tickCounter,
+            is1msStreamingActive = is1msStreamingActive,
+            onToggle1ms = { viewModel.toggle1msStreaming() },
             selectedTab = selectedOptionsTab,
             onTabSelected = { viewModel.setOptionsTab(it) },
             onDismiss = { viewModel.closeOptionsHubModal() }
+        )
+    }
+
+    if (showNewsBriefingModal) {
+        MarketNewsBriefingDialog(
+            briefing = marketNews,
+            isLoading = isNewsLoading,
+            onRefresh = { viewModel.fetchMarketNews() },
+            onNewsSelected = { item -> viewModel.openNewsDetail(item) },
+            onDismiss = { viewModel.closeNewsBriefingModal() }
+        )
+    }
+
+    if (selectedNewsItemForDetail != null) {
+        NewsDetailDialog(
+            item = selectedNewsItemForDetail!!,
+            onDismiss = { viewModel.closeNewsDetail() },
+            onSelectSymbol = { sym ->
+                viewModel.closeNewsDetail()
+                viewModel.onSymbolSelected(sym)
+            }
         )
     }
 
@@ -1060,6 +1094,105 @@ fun PredictorScreen(
                             )
                             Text(
                                 text = "OI Matrix • Protective Put/Call",
+                                fontSize = 8.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 7. Market News & Briefings
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openNewsBriefingModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "📰 Market News",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ElectricCyan
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(ElectricCyan.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = "LIVE", fontSize = 7.5.sp, fontWeight = FontWeight.Bold, color = ElectricCyan)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val topNews = marketNews?.items?.firstOrNull()?.title ?: "Breaking Stories & Impact"
+                            Text(
+                                text = topNews,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Tap for full stories & impact analysis",
+                                fontSize = 8.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // 8. 1ms Option Chain Direct Access
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                viewModel.setOptionsTab("LIVE_CHAIN")
+                                viewModel.openOptionsHubModal()
+                            },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "⚡ 1ms Option Chain",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonEmerald
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(NeonEmerald.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = "1MS", fontSize = 7.5.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (is1msStreamingActive) "⚡ Tick #$tickCounter" else "Greeks & Greeks Drift",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonEmerald,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Real-Time Strikes & Greeks Drift",
                                 fontSize = 8.sp,
                                 color = TextSecondary,
                                 maxLines = 1,

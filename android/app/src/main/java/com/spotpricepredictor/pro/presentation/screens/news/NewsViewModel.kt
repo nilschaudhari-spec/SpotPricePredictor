@@ -34,6 +34,7 @@ class NewsViewModel @Inject constructor(
 
     val selectedSection = MutableStateFlow(NewsSectionType.ALL)
     val searchQuery = MutableStateFlow("")
+    val selectedNewsItem = MutableStateFlow<com.spotpricepredictor.pro.domain.model.MarketNewsItem?>(null)
 
     val lastSyncTime = MutableStateFlow("")
     val isRefreshing = MutableStateFlow(false)
@@ -90,6 +91,14 @@ class NewsViewModel @Inject constructor(
 
     fun onSearchQueryChanged(query: String) {
         searchQuery.value = query
+    }
+
+    fun openNewsDetail(item: com.spotpricepredictor.pro.domain.model.MarketNewsItem) {
+        selectedNewsItem.value = item
+    }
+
+    fun closeNewsDetail() {
+        selectedNewsItem.value = null
     }
 
     override fun onCleared() {

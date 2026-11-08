@@ -22,12 +22,18 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.spotpricepredictor.pro.domain.model.ProStrategiesData
+import com.spotpricepredictor.pro.domain.model.OptionChainData
+import com.spotpricepredictor.pro.domain.model.StrikeRowData
 import com.spotpricepredictor.pro.presentation.theme.*
 
 @Composable
 fun OptionsHubDialog(
     data: ProStrategiesData?,
     isLoading: Boolean,
+    liveOptionChain: OptionChainData? = null,
+    tickCounter: Long = 0L,
+    is1msStreamingActive: Boolean = true,
+    onToggle1ms: (() -> Unit)? = null,
     selectedTab: String,
     onTabSelected: (String) -> Unit,
     onDismiss: () -> Unit
@@ -102,20 +108,22 @@ fun OptionsHubDialog(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 3 Tabs: OI MATRIX, HEDGING, TERMINOLOGIES
+                    // 4 Tabs: OI MATRIX, LIVE CHAIN, HEDGING, TERMINOLOGIES
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         listOf(
-                            "OI_MATRIX" to "OI Matrix (Ch 4)",
-                            "HEDGING" to "Hedging Strats (Ch 5)",
+                            "OI_MATRIX" to "OI Matrix",
+                            "LIVE_CHAIN" to "⚡ 1ms Chain",
+                            "HEDGING" to "Hedging (Ch 5)",
                             "TERMINOLOGIES" to "Option Terms"
                         ).forEach { (key, label) ->
                             val isSelected = selectedTab.equals(key, ignoreCase = true)
                             val activeColor = when (key) {
                                 "OI_MATRIX" -> RoyalViolet
-                                "HEDGING" -> ElectricCyan
+                                "LIVE_CHAIN" -> ElectricCyan
+                                "HEDGING" -> NeonEmerald
                                 else -> AmberWarning
                             }
 
@@ -137,7 +145,7 @@ fun OptionsHubDialog(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 9.sp,
+                                    fontSize = 8.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isSelected) activeColor else TextSecondary,
                                     maxLines = 1,
@@ -149,7 +157,7 @@ fun OptionsHubDialog(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    if (data == null) {
+                    if (data == null && liveOptionChain == null) {
                         Box(
                             modifier = Modifier.fillMaxWidth().weight(1f),
                             contentAlignment = Alignment.Center
@@ -158,10 +166,17 @@ fun OptionsHubDialog(
                         }
                     } else {
                         when (selectedTab.uppercase()) {
-                            "OI_MATRIX" -> OpenInterestTabContent(data)
-                            "HEDGING" -> HedgingTabContent(data)
-                            "TERMINOLOGIES" -> TerminologiesTabContent(data)
-                            else -> OpenInterestTabContent(data)
+                            "OI_MATRIX" -> if (data != null) OpenInterestTabContent(data) else Box(Modifier.fillMaxSize())
+                            "LIVE_CHAIN" -> LiveChainTabContent(
+                                symbol = data?.symbol ?: liveOptionChain?.symbol ?: "NIFTY",
+                                optionChain = liveOptionChain,
+                                tickCounter = tickCounter,
+                                is1msStreamingActive = is1msStreamingActive,
+                                onToggle1ms = onToggle1ms
+                            )
+                            "HEDGING" -> if (data != null) HedgingTabContent(data) else Box(Modifier.fillMaxSize())
+                            "TERMINOLOGIES" -> if (data != null) TerminologiesTabContent(data) else Box(Modifier.fillMaxSize())
+                            else -> if (data != null) OpenInterestTabContent(data) else Box(Modifier.fillMaxSize())
                         }
                     }
                 }
@@ -480,4 +495,271 @@ private fun TerminologiesTabContent(data: ProStrategiesData) {
         }
     }
 }
+
+@Composable
+private fun LiveChainTabContent(
+    symbol: String,
+    optionChain: OptionChainData?,
+    tickCounter: Long,
+    is1msStreamingActive: Boolean,
+    onToggle1ms: (() -> Unit)?
+) {
+    if (optionChain == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "Initializing 1ms Option Chain stream...", color = TextSecondary, fontSize = 12.sp)
+        }
+        return
+    }
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // 1. Live 1ms Stream & Metrics Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                border = BorderStroke(1.dp, CardBorder)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "⚡ 1MS HIGH-FREQUENCY STREAM",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = ElectricCyan
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.15f) else AmberWarning.copy(alpha = 0.15f),
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = if (is1msStreamingActive) "● 1ms ACTIVE" else "⏸️ PAUSED",
+                                        fontSize = 8.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (is1msStreamingActive) NeonEmerald else AmberWarning
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Tick #$tickCounter • Greeks Delta Drift",
+                                fontSize = 9.sp,
+                                color = TextSecondary
+                            )
+                        }
+
+                        if (onToggle1ms != null) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (is1msStreamingActive) NeonEmerald.copy(alpha = 0.2f) else SurfaceDark,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (is1msStreamingActive) NeonEmerald else CardBorder,
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { onToggle1ms() }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (is1msStreamingActive) "1ms ON" else "1ms OFF",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (is1msStreamingActive) NeonEmerald else TextSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(text = "LIVE SPOT", fontSize = 8.5.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "₹${"%,.2f".format(optionChain.spotPrice)}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = ElectricCyan
+                            )
+                        }
+
+                        Column {
+                            Text(text = "PCR", fontSize = 8.5.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            val pcrColor = if (optionChain.pcr >= 1.0) NeonEmerald else CrimsonAlert
+                            Text(
+                                text = "${optionChain.pcr}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = pcrColor
+                            )
+                        }
+
+                        Column {
+                            Text(text = "MAX PAIN", fontSize = 8.5.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "₹${"%,.0f".format(optionChain.maxPain)}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RoyalViolet
+                            )
+                        }
+
+                        Column {
+                            Text(text = "SUPPORT", fontSize = 8.5.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "₹${"%,.0f".format(optionChain.immediateSupport)}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = NeonEmerald
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Option Chain Table Header
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "CALL LTP", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = NeonEmerald, modifier = Modifier.weight(1.1f))
+                Text(text = "CALL OI", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = TextSecondary, modifier = Modifier.weight(0.9f))
+                Text(text = "STRIKE", fontSize = 9.5.sp, fontWeight = FontWeight.ExtraBold, color = ElectricCyan, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(text = "PUT OI", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = TextSecondary, modifier = Modifier.weight(0.9f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                Text(text = "PUT LTP", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = CrimsonAlert, modifier = Modifier.weight(1.1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            }
+        }
+
+        // 3. Option Chain Strikes (1ms live updating rows)
+        val strikesToShow = optionChain.strikes.take(15)
+        items(strikesToShow) { row ->
+            val isAtm = kotlin.math.abs(row.strikePrice - optionChain.spotPrice) <= 50.0
+            val isCallItm = row.strikePrice < optionChain.spotPrice
+            val isPutItm = row.strikePrice > optionChain.spotPrice
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        if (isAtm) ElectricCyan.copy(alpha = 0.12f) else CardBackground,
+                        RoundedCornerShape(6.dp)
+                    )
+                    .border(
+                        0.8.dp,
+                        if (isAtm) ElectricCyan.copy(alpha = 0.6f) else CardBorder,
+                        RoundedCornerShape(6.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Call LTP
+                Text(
+                    text = "₹${"%.2f".format(row.call.ltp)}",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isCallItm) NeonEmerald else TextPrimary,
+                    modifier = Modifier.weight(1.1f)
+                )
+
+                // Call OI
+                Text(
+                    text = "${"%,d".format(row.call.oi / 1000)}k",
+                    fontSize = 8.5.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(0.9f)
+                )
+
+                // Strike
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${row.strikePrice.toInt()}",
+                        fontSize = 11.sp,
+                        fontWeight = if (isAtm) FontWeight.ExtraBold else FontWeight.Bold,
+                        color = if (isAtm) ElectricCyan else TextPrimary
+                    )
+                    if (isAtm) {
+                        Text(text = "● ATM", fontSize = 7.sp, fontWeight = FontWeight.ExtraBold, color = ElectricCyan)
+                    }
+                }
+
+                // Put OI
+                Text(
+                    text = "${"%,d".format(row.put.oi / 1000)}k",
+                    fontSize = 8.5.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(0.9f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+
+                // Put LTP
+                Text(
+                    text = "₹${"%.2f".format(row.put.ltp)}",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isPutItm) CrimsonAlert else TextPrimary,
+                    modifier = Modifier.weight(1.1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+        }
+
+        // 4. Slide 66 Options Education Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                border = BorderStroke(1.dp, CardBorder)
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        text = "CHAPTER 4 STRIKE SELECTION RULE (SLIDE 66)",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AmberWarning
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "For optimal delta response, always trade At-The-Money (ATM) or 1-strike In-The-Money (ITM) where delta is ~0.50 to 0.65. Avoid deep OTM strikes as theta decay erodes 70% of premium within 48 hours of expiry.",
+                        fontSize = 8.5.sp,
+                        color = TextSecondary,
+                        lineHeight = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
 

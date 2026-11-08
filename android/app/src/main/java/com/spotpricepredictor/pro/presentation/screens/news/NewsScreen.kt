@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.spotpricepredictor.pro.domain.model.MarketNewsItem
 import com.spotpricepredictor.pro.domain.model.NewsImpactSentiment
 import com.spotpricepredictor.pro.domain.model.NewsSectionType
+import com.spotpricepredictor.pro.presentation.components.NewsDetailDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
 @Composable
@@ -41,6 +42,18 @@ fun NewsScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val lastSyncTime by viewModel.lastSyncTime.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+
+    var selectedNewsItem by remember { mutableStateOf<MarketNewsItem?>(null) }
+
+    if (selectedNewsItem != null) {
+        NewsDetailDialog(
+            item = selectedNewsItem!!,
+            onDismiss = { selectedNewsItem = null },
+            onSelectSymbol = { _ ->
+                selectedNewsItem = null
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -337,7 +350,10 @@ fun NewsScreen(
 
                     // News Cards
                     items(filteredItems, key = { it.id }) { newsItem ->
-                        NewsCard(item = newsItem)
+                        NewsCard(
+                            item = newsItem,
+                            onClick = { selectedNewsItem = newsItem }
+                        )
                     }
 
                     // Bottom Disclaimer
@@ -377,9 +393,14 @@ fun NewsScreen(
 }
 
 @Composable
-private fun NewsCard(item: MarketNewsItem) {
+private fun NewsCard(
+    item: MarketNewsItem,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
         border = CardDefaults.outlinedCardBorder().copy(
@@ -575,10 +596,10 @@ private fun NewsCard(item: MarketNewsItem) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Footer: Source Attribution
+            // Footer: Source Attribution & Full Story CTA
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -586,6 +607,20 @@ private fun NewsCard(item: MarketNewsItem) {
                     fontSize = 10.sp,
                     color = TextMuted
                 )
+
+                Box(
+                    modifier = Modifier
+                        .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .border(0.6.dp, ElectricCyan.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = "Read Full Story ➔",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ElectricCyan
+                    )
+                }
             }
         }
     }

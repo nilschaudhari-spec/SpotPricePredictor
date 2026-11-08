@@ -20,6 +20,9 @@ import com.spotpricepredictor.pro.domain.model.DetailedTechnicalsData
 import com.spotpricepredictor.pro.domain.model.ResultsAndEventsData
 import com.spotpricepredictor.pro.domain.model.PatternScannerData
 import com.spotpricepredictor.pro.domain.model.PatternDetectionItem
+import com.spotpricepredictor.pro.domain.model.OptionChainData
+import com.spotpricepredictor.pro.domain.model.MarketNewsBriefing
+import com.spotpricepredictor.pro.domain.model.MarketNewsItem
 import com.spotpricepredictor.pro.domain.repository.MarketRepository
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetGainersLosersUseCase
@@ -111,7 +114,17 @@ class PredictorViewModel @Inject constructor(
     val showProStrategiesModal = MutableStateFlow(false)
     val showOptionsHubModal = MutableStateFlow(false)
     val selectedStrategyTab = MutableStateFlow("INTRADAY") // "INTRADAY", "GOLDEN_CROSS", "BOLLINGER", "CONSOLIDATION"
-    val selectedOptionsTab = MutableStateFlow("OI_MATRIX") // "OI_MATRIX", "HEDGING", "TERMINOLOGIES"
+    val selectedOptionsTab = MutableStateFlow("OI_MATRIX") // "OI_MATRIX", "LIVE_CHAIN", "HEDGING", "TERMINOLOGIES"
+
+    // Option Chain (1ms High-Frequency Real-Time Streaming)
+    val liveOptionChain = MutableStateFlow<OptionChainData?>(null)
+    val isOptionChainLoading = MutableStateFlow(false)
+
+    // Market News & Live Briefings
+    val marketNews = MutableStateFlow<MarketNewsBriefing?>(null)
+    val isNewsLoading = MutableStateFlow(false)
+    val showNewsBriefingModal = MutableStateFlow(false)
+    val selectedNewsItemForDetail = MutableStateFlow<MarketNewsItem?>(null)
 
     // Market Status (Live vs Closed)
     val marketStatus = MutableStateFlow(MarketStatusHelper.getMarketStatus("NIFTY"))
@@ -155,6 +168,8 @@ class PredictorViewModel @Inject constructor(
         fetchResultsEvents("NIFTY")
         fetchPatterns("NIFTY")
         fetchProStrategies("NIFTY")
+        fetchOptionChain("NIFTY")
+        fetchMarketNews()
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
             start1msHighFrequencyTicker()
@@ -275,6 +290,7 @@ class PredictorViewModel @Inject constructor(
         fetchResultsEvents(clean)
         fetchPatterns(clean)
         fetchProStrategies(clean)
+        fetchOptionChain(clean)
 
         // 3. Control 1ms stream based on market open status
         if (!mStatus.isOpen && !isDemoSimulation.value) {
@@ -463,6 +479,38 @@ class PredictorViewModel @Inject constructor(
                         } else item
                     }
                     gainersLosers.value = currentMovers.copy(gainers = updatedGainers, losers = updatedLosers)
+                }
+
+                // Dynamically update Live Option Chain strikes LTP & spot price every millisecond
+                val currentChain = liveOptionChain.value
+                if (currentChain != null && currentChain.symbol.equals(currentSym, ignoreCase = true)) {
+                    val spotDelta = newPrice - baseSpot
+                    val updatedStrikes = currentChain.strikes.map { strike ->
+                        val callDelta = if (strike.call.greeks.delta != 0.0) strike.call.greeks.delta else 0.5
+                        val putDelta = if (strike.put.greeks.delta != 0.0) strike.put.greeks.delta else -0.5
+                        val callJitter = (rng.nextDouble() - 0.5) * 0.05
+                        val putJitter = (rng.nextDouble() - 0.5) * 0.05
+
+                        val newCallLtp = Math.round(maxOf(0.05, strike.call.ltp + spotDelta * callDelta + callJitter) * 100.0) / 100.0
+                        val newPutLtp = Math.round(maxOf(0.05, strike.put.ltp - spotDelta * kotlin.math.abs(putDelta) + putJitter) * 100.0) / 100.0
+                        val newCallVol = strike.call.volume + (if (tickIdx % 50L == 0L) (rng.nextInt(3) + 1).toLong() else 0L)
+                        val newPutVol = strike.put.volume + (if (tickIdx % 50L == 0L) (rng.nextInt(3) + 1).toLong() else 0L)
+
+                        strike.copy(
+                            call = strike.call.copy(ltp = newCallLtp, volume = newCallVol),
+                            put = strike.put.copy(ltp = newPutLtp, volume = newPutVol)
+                        )
+                    }
+
+                    val totalCallOi = updatedStrikes.sumOf { it.call.oi }.coerceAtLeast(1L)
+                    val totalPutOi = updatedStrikes.sumOf { it.put.oi }
+                    val newPcr = Math.round((totalPutOi.toDouble() / totalCallOi.toDouble()) * 100.0) / 100.0
+
+                    liveOptionChain.value = currentChain.copy(
+                        spotPrice = newPrice,
+                        pcr = newPcr,
+                        strikes = updatedStrikes
+                    )
                 }
             }
         }
@@ -710,6 +758,57 @@ class PredictorViewModel @Inject constructor(
 
     fun setOptionsTab(tab: String) {
         selectedOptionsTab.value = tab
+    }
+
+    fun fetchOptionChain(symbol: String = selectedSymbol.value) {
+        viewModelScope.launch {
+            isOptionChainLoading.value = true
+            marketRepository.getOptionChain(symbol = symbol, daysToExpiry = 3.5, expiryDate = null)
+                .fold(
+                    onSuccess = { data ->
+                        liveOptionChain.value = data
+                        isOptionChainLoading.value = false
+                    },
+                    onFailure = {
+                        isOptionChainLoading.value = false
+                    }
+                )
+        }
+    }
+
+    fun fetchMarketNews() {
+        viewModelScope.launch {
+            isNewsLoading.value = true
+            marketRepository.getMarketNews()
+                .fold(
+                    onSuccess = { briefing ->
+                        marketNews.value = briefing
+                        isNewsLoading.value = false
+                    },
+                    onFailure = {
+                        isNewsLoading.value = false
+                    }
+                )
+        }
+    }
+
+    fun openNewsBriefingModal() {
+        showNewsBriefingModal.value = true
+        if (marketNews.value == null) {
+            fetchMarketNews()
+        }
+    }
+
+    fun closeNewsBriefingModal() {
+        showNewsBriefingModal.value = false
+    }
+
+    fun openNewsDetail(item: MarketNewsItem) {
+        selectedNewsItemForDetail.value = item
+    }
+
+    fun closeNewsDetail() {
+        selectedNewsItemForDetail.value = null
     }
 
     override fun onCleared() {
