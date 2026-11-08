@@ -468,4 +468,103 @@ class PatternScannerResponse(BaseModel):
     sell_patterns: List[PatternDetectionItem] = []
     all_patterns: List[PatternDetectionItem] = []
 
+# =============================================================================
+# ALL ROUNDER 2 (OCTOBER EDITION) PRO STRATEGIES & OPTIONS SUITE
+# =============================================================================
+
+class DailyIntradayTechniqueItem(BaseModel):
+    symbol: str
+    timeframe: str = "5 MIN"
+    supertrend_status: str # "BULLISH (UPTREND)" or "BEARISH (DOWNTREND)"
+    supertrend_value: float
+    supertrend_inputs: str = "Length: 20, Factor: 2"
+    vwap_status: str # "PRICE ABOVE VWAP (UPTREND)" or "PRICE BELOW VWAP (DOWNTREND)"
+    vwap_value: float
+    macd_status: str # "MACD BULLISH CROSSOVER" or "MACD BEARISH CROSSOVER"
+    macd_signal: str
+    tri_confirmation_signal: str # "CONFIRMED BUY / CALL ENTRY", "CONFIRMED SELL / PUT ENTRY", "WAITING FOR CONFIRMATION"
+    is_confirmed: bool = False
+    entry_price: float
+    target_price: float
+    stop_loss: float
+    target_sl_ratio: str = "1:1"
+    execution_rules: List[str] = [
+        "1. Candlestick Body should not be weak / small.",
+        "2. Trend should be reversal only, if not avoid it.",
+        "3. Take Entry on before half minute of (B) Candle closing.",
+        "4. Target & Stop Loss should be 1:1 (e.g. 20 pts target = 20 pts SL).",
+        "5. Place Target order immediately after Transaction Order."
+    ]
+
+class GoldenCrossStrategyItem(BaseModel):
+    symbol: str
+    ema50_value: float # Blue Line
+    ema200_value: float # Red Line
+    crossover_status: str # "GOLDEN CROSS (BULLISH)", "DEATH CROSS (BEARISH)", "IN UPTREND (50 > 200)", "IN DOWNTREND (50 < 200)"
+    reenter_opportunity: bool = False
+    reenter_type: str = "NONE" # "BUY RE-ENTER (Near 200/50 EMA Support)", "SELL RE-ENTER (Near 200/50 EMA Resistance)", "NONE"
+    reenter_explanation: str
+    trade_action: str # "BUY / CALL", "SHORT SELL / PUT", "HOLD / WAIT"
+
+class BollingerBandTechniqueItem(BaseModel):
+    symbol: str
+    upper_band: float
+    median_line: float # SMA 20
+    lower_band: float
+    band_status: str # "TOUCHING/BREAKING UPPER LINE", "TOUCHING/BREAKING LOWER LINE", "PASSING THROUGH MEDIAN LINE", "INSIDE BANDS"
+    trade_call: str # "CALL BUYING SETUP (STRONG UPTREND)", "PUT BUYING SETUP (STRONG DOWNTREND)", "TREND REVERSAL ALERT", "NEUTRAL"
+    explanation: str
+
+class ConsolidationBreakoutItem(BaseModel):
+    symbol: str
+    range_high: float
+    range_low: float
+    is_consolidating: bool
+    status: str # "CONSOLIDATING (SIDEWAYS - AVOID)", "BREAKOUT ABOVE RESISTANCE (BIGGER MOVE UP)", "BREAKDOWN BELOW SUPPORT (BIGGER MOVE DOWN)"
+    guidance: str = "Once this range is broken, it may lead to bigger moves; until range is intact, avoid trading."
+
+class OpenInterestInterpretationItem(BaseModel):
+    symbol: str
+    spot_price: float
+    price_change_pct: float
+    total_oi: int
+    oi_change_pct: float
+    interpretation: str # "LONG BUILDUP", "SHORT BUILDUP", "SHORT COVERING", "LONG UNWINDING"
+    market_sentiment: str # "Strong Bullish", "Strong Bearish", "Bullish Pullback", "Bearish Profit Booking"
+    put_call_ratio_oi: float
+    max_pain_strike: float
+    highest_oi_call_resistance: float
+    highest_oi_put_support: float
+    action_advice: str
+
+class HedgingStrategyItem(BaseModel):
+    strategy_name: str # "Protective Put (Uptrend Strategy)", "Protective Call (Downtrend Strategy)"
+    view: str # "WHEN MARKET IS IN UPTREND", "WHEN MARKET IS IN DOWNTREND"
+    rule: str = "Works only when market in uptrend/downtrend; Avoid trade if market is sideways."
+    future_leg: str # "Buy Future - 1 lot", "Short sell Future - 1 lot"
+    option_leg: str # "Buy ATM Put - 1 lot", "Buy ATM Call - 1 lot"
+    risk_profile: str
+    underlying_symbol: str
+    atm_strike: float
+    estimated_premium: float
+    net_protection: str
+
+class OptionTerminologyItem(BaseModel):
+    id: int
+    name: str
+    definition: str
+    best_market_condition: str
+
+class ProStrategiesResponse(BaseModel):
+    symbol: str
+    company_name: str
+    daily_intraday: DailyIntradayTechniqueItem
+    golden_cross: GoldenCrossStrategyItem
+    bollinger_bands: BollingerBandTechniqueItem
+    consolidation: ConsolidationBreakoutItem
+    open_interest: OpenInterestInterpretationItem
+    hedging_strategies: List[HedgingStrategyItem] = []
+    terminologies: List[OptionTerminologyItem] = []
+
+
 

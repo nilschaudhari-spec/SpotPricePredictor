@@ -122,4 +122,59 @@ def test_candlestick_patterns_endpoint():
     data_pa = resp_pa.json()
     assert all("PRICE ACTION" in p["category"] for p in data_pa["all_patterns"])
 
+def test_pro_strategies_endpoint():
+    resp = client.get("/api/v1/market/pro-strategies?symbol=NIFTY")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert data["symbol"] == "NIFTY"
+    # 1. Daily Intraday (Supertrend + VWAP + MACD)
+    di = data["daily_intraday"]
+    assert di["timeframe"] == "5 MIN"
+    assert "supertrend_status" in di
+    assert "vwap_status" in di
+    assert "macd_status" in di
+    assert "target_sl_ratio" in di
+    assert len(di["execution_rules"]) == 5
+
+    # 2. Golden Cross & Re-Enter
+    gc = data["golden_cross"]
+    assert gc["ema50_value"] > 0
+    assert gc["ema200_value"] > 0
+    assert "crossover_status" in gc
+    assert "reenter_type" in gc
+
+    # 3. Bollinger Bands
+    bb = data["bollinger_bands"]
+    assert bb["upper_band"] > bb["lower_band"]
+    assert bb["median_line"] > 0
+    assert "band_status" in bb
+
+    # 4. Consolidation
+    cons = data["consolidation"]
+    assert cons["range_high"] > cons["range_low"]
+    assert "is_consolidating" in cons
+
+    # 5. Open Interest Matrix
+    oi = data["open_interest"]
+    assert oi["interpretation"] in ["LONG BUILDUP", "SHORT BUILDUP", "SHORT COVERING", "LONG UNWINDING"]
+    assert oi["put_call_ratio_oi"] > 0
+
+    # 6. Hedging Strategies (Protective Put & Protective Call)
+    hedging = data["hedging_strategies"]
+    assert len(hedging) == 2
+    strat_names = [h["strategy_name"] for h in hedging]
+    assert any("Protective Put" in s for s in strat_names)
+    assert any("Protective Call" in s for s in strat_names)
+
+    # 7. Terminologies
+    terms = data["terminologies"]
+    assert len(terms) >= 8
+    term_names = [t["name"] for t in terms]
+    assert "Long Straddle" in term_names
+    assert "Short Straddle" in term_names
+    assert "Bull Spread" in term_names
+    assert "Bear Spread" in term_names
+
+
 

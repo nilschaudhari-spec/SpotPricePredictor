@@ -446,5 +446,101 @@ data class PatternScannerResponseDto(
     @SerializedName("all_patterns") val allPatterns: List<PatternDetectionItemDto> = emptyList()
 )
 
+data class DailyIntradayTechniqueDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("timeframe") val timeframe: String = "5 MIN",
+    @SerializedName("supertrend_status") val supertrendStatus: String,
+    @SerializedName("supertrend_value") val supertrendValue: Double,
+    @SerializedName("supertrend_inputs") val supertrendInputs: String = "Length: 20, Factor: 2",
+    @SerializedName("vwap_status") val vwapStatus: String,
+    @SerializedName("vwap_value") val vwapValue: Double,
+    @SerializedName("macd_status") val macdStatus: String,
+    @SerializedName("macd_signal") val macdSignal: String,
+    @SerializedName("tri_confirmation_signal") val triConfirmationSignal: String,
+    @SerializedName("is_confirmed") val isConfirmed: Boolean = false,
+    @SerializedName("entry_price") val entryPrice: Double,
+    @SerializedName("target_price") val targetPrice: Double,
+    @SerializedName("stop_loss") val stopLoss: Double,
+    @SerializedName("target_sl_ratio") val targetSlRatio: String = "1:1",
+    @SerializedName("execution_rules") val executionRules: List<String> = emptyList()
+)
+
+data class GoldenCrossStrategyDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("ema50_value") val ema50Value: Double,
+    @SerializedName("ema200_value") val ema200Value: Double,
+    @SerializedName("crossover_status") val crossoverStatus: String,
+    @SerializedName("reenter_opportunity") val reenterOpportunity: Boolean = false,
+    @SerializedName("reenter_type") val reenterType: String = "NONE",
+    @SerializedName("reenter_explanation") val reenterExplanation: String,
+    @SerializedName("trade_action") val tradeAction: String
+)
+
+data class BollingerBandTechniqueDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("upper_band") val upperBand: Double,
+    @SerializedName("median_line") val medianLine: Double,
+    @SerializedName("lower_band") val lowerBand: Double,
+    @SerializedName("band_status") val bandStatus: String,
+    @SerializedName("trade_call") val tradeCall: String,
+    @SerializedName("explanation") val explanation: String
+)
+
+data class ConsolidationBreakoutDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("range_high") val rangeHigh: Double,
+    @SerializedName("range_low") val rangeLow: Double,
+    @SerializedName("is_consolidating") val isConsolidating: Boolean,
+    @SerializedName("status") val status: String,
+    @SerializedName("guidance") val guidance: String
+)
+
+data class OpenInterestInterpretationDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("spot_price") val spotPrice: Double,
+    @SerializedName("price_change_pct") val priceChangePct: Double,
+    @SerializedName("total_oi") val totalOi: Long,
+    @SerializedName("oi_change_pct") val oiChangePct: Double,
+    @SerializedName("interpretation") val interpretation: String,
+    @SerializedName("market_sentiment") val marketSentiment: String,
+    @SerializedName("put_call_ratio_oi") val putCallRatioOi: Double,
+    @SerializedName("max_pain_strike") val maxPainStrike: Double,
+    @SerializedName("highest_oi_call_resistance") val highestOiCallResistance: Double,
+    @SerializedName("highest_oi_put_support") val highestOiPutSupport: Double,
+    @SerializedName("action_advice") val actionAdvice: String
+)
+
+data class HedgingStrategyItemDto(
+    @SerializedName("strategy_name") val strategyName: String,
+    @SerializedName("view") val view: String,
+    @SerializedName("rule") val rule: String,
+    @SerializedName("future_leg") val futureLeg: String,
+    @SerializedName("option_leg") val optionLeg: String,
+    @SerializedName("risk_profile") val riskProfile: String,
+    @SerializedName("underlying_symbol") val underlyingSymbol: String,
+    @SerializedName("atm_strike") val atmStrike: Double,
+    @SerializedName("estimated_premium") val estimatedPremium: Double,
+    @SerializedName("net_protection") val netProtection: String
+)
+
+data class OptionTerminologyItemDto(
+    @SerializedName("id") val id: Int,
+    @SerializedName("name") val name: String,
+    @SerializedName("definition") val definition: String,
+    @SerializedName("best_market_condition") val bestMarketCondition: String
+)
+
+data class ProStrategiesResponseDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("daily_intraday") val dailyIntraday: DailyIntradayTechniqueDto,
+    @SerializedName("golden_cross") val goldenCross: GoldenCrossStrategyDto,
+    @SerializedName("bollinger_bands") val bollingerBands: BollingerBandTechniqueDto,
+    @SerializedName("consolidation") val consolidation: ConsolidationBreakoutDto,
+    @SerializedName("open_interest") val openInterest: OpenInterestInterpretationDto,
+    @SerializedName("hedging_strategies") val hedgingStrategies: List<HedgingStrategyItemDto> = emptyList(),
+    @SerializedName("terminologies") val terminologies: List<OptionTerminologyItemDto> = emptyList()
+)
+
 
 

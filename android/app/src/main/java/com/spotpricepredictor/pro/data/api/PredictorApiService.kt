@@ -20,6 +20,7 @@ import com.spotpricepredictor.pro.data.api.models.PatternScannerResponseDto
 import com.spotpricepredictor.pro.data.api.models.PeerComparisonResponseDto
 import com.spotpricepredictor.pro.data.api.models.ResultsAndEventsResponseDto
 import com.spotpricepredictor.pro.data.api.models.TradeSuggestionsResponseDto
+import com.spotpricepredictor.pro.data.api.models.ProStrategiesResponseDto
 
 interface PredictorApiService {
 
@@ -94,6 +95,11 @@ interface PredictorApiService {
         @Query("pattern_type") patternType: String? = "ALL",
         @Query("limit") limit: Int = 50
     ): Response<PatternScannerResponseDto>
+
+    @GET("api/v1/market/pro-strategies")
+    suspend fun getProStrategies(
+        @Query("symbol") symbol: String = "NIFTY"
+    ): Response<ProStrategiesResponseDto>
 }
 
 

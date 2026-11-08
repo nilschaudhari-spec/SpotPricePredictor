@@ -49,6 +49,8 @@ import com.spotpricepredictor.pro.presentation.components.PeerComparisonDialog
 import com.spotpricepredictor.pro.presentation.components.PredictionResultCard
 import com.spotpricepredictor.pro.presentation.components.ResultsAndEventsDialog
 import com.spotpricepredictor.pro.presentation.components.CandlestickPatternsDialog
+import com.spotpricepredictor.pro.presentation.components.ProStrategiesDialog
+import com.spotpricepredictor.pro.presentation.components.OptionsHubDialog
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
@@ -105,6 +107,13 @@ fun PredictorScreen(
     val showPatternsModal by viewModel.showPatternsModal.collectAsState()
     val selectedPatternTypeFilter by viewModel.selectedPatternTypeFilter.collectAsState()
     val selectedPatternNameFilter by viewModel.selectedPatternNameFilter.collectAsState()
+
+    val proStrategies by viewModel.proStrategies.collectAsState()
+    val isProStrategiesLoading by viewModel.isProStrategiesLoading.collectAsState()
+    val showProStrategiesModal by viewModel.showProStrategiesModal.collectAsState()
+    val showOptionsHubModal by viewModel.showOptionsHubModal.collectAsState()
+    val selectedStrategyTab by viewModel.selectedStrategyTab.collectAsState()
+    val selectedOptionsTab by viewModel.selectedOptionsTab.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -230,6 +239,26 @@ fun PredictorScreen(
             onNameFilterSelected = { viewModel.setPatternNameFilter(it) },
             onStockSelected = { viewModel.onSymbolSelected(it) },
             onDismiss = { viewModel.closePatternsModal() }
+        )
+    }
+
+    if (showProStrategiesModal) {
+        ProStrategiesDialog(
+            data = proStrategies,
+            isLoading = isProStrategiesLoading,
+            selectedTab = selectedStrategyTab,
+            onTabSelected = { viewModel.setStrategyTab(it) },
+            onDismiss = { viewModel.closeProStrategiesModal() }
+        )
+    }
+
+    if (showOptionsHubModal) {
+        OptionsHubDialog(
+            data = proStrategies,
+            isLoading = isProStrategiesLoading,
+            selectedTab = selectedOptionsTab,
+            onTabSelected = { viewModel.setOptionsTab(it) },
+            onDismiss = { viewModel.closeOptionsHubModal() }
         )
     }
 
@@ -938,6 +967,103 @@ fun PredictorScreen(
                                 text = "Quarterly • RBI • Fed",
                                 fontSize = 8.sp,
                                 color = TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 5. Pro Strategies Hub
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openProStrategiesModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "⚡ Pro Strategies",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ElectricCyan
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(ElectricCyan.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = "PPT", fontSize = 7.5.sp, fontWeight = FontWeight.Bold, color = ElectricCyan)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val stSig = proStrategies?.dailyIntraday?.triConfirmationSignal ?: "5M Intraday"
+                            Text(
+                                text = if (stSig.contains("BUY")) "🟢 5M BUY CONFIRMED" else if (stSig.contains("SELL")) "🔴 5M SELL CONFIRMED" else "ST + VWAP + MACD",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (stSig.contains("BUY")) NeonEmerald else if (stSig.contains("SELL")) CrimsonAlert else TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "Supertrend • Golden Cross • BB",
+                                fontSize = 8.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // 6. Options & OI Lab
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openOptionsHubModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    text = "📊 Options & OI",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RoyalViolet
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(RoyalViolet.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(text = "CH 4/5", fontSize = 7.5.sp, fontWeight = FontWeight.Bold, color = RoyalViolet)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val oiInterp = proStrategies?.openInterest?.interpretation ?: "Open Interest"
+                            Text(
+                                text = oiInterp,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (oiInterp.contains("BUILDUP") && oiInterp.contains("LONG") || oiInterp.contains("COVERING")) NeonEmerald else CrimsonAlert,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "OI Matrix • Protective Put/Call",
+                                fontSize = 8.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }

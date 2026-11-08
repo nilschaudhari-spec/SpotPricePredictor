@@ -284,3 +284,99 @@ data class PatternScannerData(
     val sellPatterns: List<PatternDetectionItem> = emptyList(),
     val allPatterns: List<PatternDetectionItem> = emptyList()
 )
+
+data class DailyIntradayTechnique(
+    val symbol: String,
+    val timeframe: String = "5 MIN",
+    val supertrendStatus: String,
+    val supertrendValue: Double,
+    val supertrendInputs: String = "Length: 20, Factor: 2",
+    val vwapStatus: String,
+    val vwapValue: Double,
+    val macdStatus: String,
+    val macdSignal: String,
+    val triConfirmationSignal: String,
+    val isConfirmed: Boolean = false,
+    val entryPrice: Double,
+    val targetPrice: Double,
+    val stopLoss: Double,
+    val targetSlRatio: String = "1:1",
+    val executionRules: List<String> = emptyList()
+)
+
+data class GoldenCrossData(
+    val symbol: String,
+    val ema50Value: Double,
+    val ema200Value: Double,
+    val crossoverStatus: String,
+    val reenterOpportunity: Boolean = false,
+    val reenterType: String = "NONE",
+    val reenterExplanation: String,
+    val tradeAction: String
+)
+
+data class BollingerBandTechnique(
+    val symbol: String,
+    val upperBand: Double,
+    val medianLine: Double,
+    val lowerBand: Double,
+    val bandStatus: String,
+    val tradeCall: String,
+    val explanation: String
+)
+
+data class ConsolidationBreakout(
+    val symbol: String,
+    val rangeHigh: Double,
+    val rangeLow: Double,
+    val isConsolidating: Boolean,
+    val status: String,
+    val guidance: String
+)
+
+data class OpenInterestInterpretation(
+    val symbol: String,
+    val spotPrice: Double,
+    val priceChangePct: Double,
+    val totalOi: Long,
+    val oiChangePct: Double,
+    val interpretation: String,
+    val marketSentiment: String,
+    val putCallRatioOi: Double,
+    val maxPainStrike: Double,
+    val highestOiCallResistance: Double,
+    val highestOiPutSupport: Double,
+    val actionAdvice: String
+)
+
+data class HedgingStrategyItem(
+    val strategyName: String,
+    val view: String,
+    val rule: String,
+    val futureLeg: String,
+    val optionLeg: String,
+    val riskProfile: String,
+    val underlyingSymbol: String,
+    val atmStrike: Double,
+    val estimatedPremium: Double,
+    val netProtection: String
+)
+
+data class OptionTerminologyItem(
+    val id: Int,
+    val name: String,
+    val definition: String,
+    val bestMarketCondition: String
+)
+
+data class ProStrategiesData(
+    val symbol: String,
+    val companyName: String,
+    val dailyIntraday: DailyIntradayTechnique,
+    val goldenCross: GoldenCrossData,
+    val bollingerBands: BollingerBandTechnique,
+    val consolidation: ConsolidationBreakout,
+    val openInterest: OpenInterestInterpretation,
+    val hedgingStrategies: List<HedgingStrategyItem> = emptyList(),
+    val terminologies: List<OptionTerminologyItem> = emptyList()
+)

@@ -9,12 +9,14 @@ from app.services.peer_comparison_service import PeerComparisonService
 from app.services.detailed_technical_service import DetailedTechnicalService
 from app.services.results_events_service import ResultsAndEventsService
 from app.services.pattern_recognition_service import PatternRecognitionService
+from app.services.pro_strategies_service import ProStrategiesService
 from app.models.schemas import (
     CorporateActionsResponse,
     PeerComparisonResponse,
     DetailedTechnicalAnalysisResponse,
     ResultsAndEventsResponse,
-    PatternScannerResponse
+    PatternScannerResponse,
+    ProStrategiesResponse
 )
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
@@ -502,5 +504,21 @@ async def get_candlestick_patterns(
     2. SELL: Hanging Man, Shooting Star, High break, close Downside, Bearish Harami
     """
     return PatternRecognitionService.get_patterns(symbol=symbol, pattern_type=pattern_type, limit=limit)
+
+@router.get("/pro-strategies", response_model=ProStrategiesResponse)
+async def get_pro_strategies(
+    symbol: str = Query("NIFTY", description="Symbol to analyze with Pro Strategies & Options suite")
+) -> ProStrategiesResponse:
+    """
+    Returns All Rounder 2 (October Edition) Complete Trading Suite:
+    1. Daily Intraday Technique: Supertrend (20,2) + VWAP + MACD Tri-Confirmation
+    2. Golden Cross (50 & 200 EMA) & Re-Enter Opportunity Strategy
+    3. Bollinger Bands Technique (Upper Band, Median Reversal, Lower Band)
+    4. Price Action Consolidation & Range Breakouts
+    5. Open Interest (OI) Interpretation Matrix (Long/Short Buildup & Covering)
+    6. Chapter 5 Hedging Strategies (Protective Put & Protective Call)
+    7. Chapter 4 Option Terminologies & Strategies Guide
+    """
+    return ProStrategiesService.analyze_symbol(symbol=symbol)
 
 

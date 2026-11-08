@@ -105,6 +105,14 @@ class PredictorViewModel @Inject constructor(
     val selectedPatternTypeFilter = MutableStateFlow("ALL") // "ALL", "BUY", "SELL"
     val selectedPatternNameFilter = MutableStateFlow("ALL")
 
+    // All Rounder 2 (October Edition) Pro Strategies & Options Suite
+    val proStrategies = MutableStateFlow<com.spotpricepredictor.pro.domain.model.ProStrategiesData?>(null)
+    val isProStrategiesLoading = MutableStateFlow(false)
+    val showProStrategiesModal = MutableStateFlow(false)
+    val showOptionsHubModal = MutableStateFlow(false)
+    val selectedStrategyTab = MutableStateFlow("INTRADAY") // "INTRADAY", "GOLDEN_CROSS", "BOLLINGER", "CONSOLIDATION"
+    val selectedOptionsTab = MutableStateFlow("OI_MATRIX") // "OI_MATRIX", "HEDGING", "TERMINOLOGIES"
+
     // Market Status (Live vs Closed)
     val marketStatus = MutableStateFlow(MarketStatusHelper.getMarketStatus("NIFTY"))
     val isDemoSimulation = MutableStateFlow(false)
@@ -146,6 +154,7 @@ class PredictorViewModel @Inject constructor(
         fetchDetailedTechnicals("NIFTY")
         fetchResultsEvents("NIFTY")
         fetchPatterns("NIFTY")
+        fetchProStrategies("NIFTY")
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
             start1msHighFrequencyTicker()
@@ -265,6 +274,7 @@ class PredictorViewModel @Inject constructor(
         fetchCorporateActions(clean)
         fetchResultsEvents(clean)
         fetchPatterns(clean)
+        fetchProStrategies(clean)
 
         // 3. Control 1ms stream based on market open status
         if (!mStatus.isOpen && !isDemoSimulation.value) {
@@ -662,6 +672,44 @@ class PredictorViewModel @Inject constructor(
 
     fun closePatternsModal() {
         showPatternsModal.value = false
+    }
+
+    // Pro Strategies & Options Hub (All Rounder 2 Edition)
+    fun fetchProStrategies(symbol: String = selectedSymbol.value) {
+        viewModelScope.launch {
+            isProStrategiesLoading.value = true
+            val res = marketRepository.getProStrategies(symbol)
+            res.onSuccess { data ->
+                proStrategies.value = data
+            }
+            isProStrategiesLoading.value = false
+        }
+    }
+
+    fun openProStrategiesModal() {
+        showProStrategiesModal.value = true
+        fetchProStrategies()
+    }
+
+    fun closeProStrategiesModal() {
+        showProStrategiesModal.value = false
+    }
+
+    fun openOptionsHubModal() {
+        showOptionsHubModal.value = true
+        fetchProStrategies()
+    }
+
+    fun closeOptionsHubModal() {
+        showOptionsHubModal.value = false
+    }
+
+    fun setStrategyTab(tab: String) {
+        selectedStrategyTab.value = tab
+    }
+
+    fun setOptionsTab(tab: String) {
+        selectedOptionsTab.value = tab
     }
 
     override fun onCleared() {

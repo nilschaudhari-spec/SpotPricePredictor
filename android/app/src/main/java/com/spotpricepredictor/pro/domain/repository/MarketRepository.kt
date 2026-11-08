@@ -78,5 +78,9 @@ interface MarketRepository {
         patternType: String? = "ALL",
         limit: Int = 50
     ): Result<com.spotpricepredictor.pro.domain.model.PatternScannerData>
+
+    suspend fun getProStrategies(
+        symbol: String = "NIFTY"
+    ): Result<com.spotpricepredictor.pro.domain.model.ProStrategiesData>
 }
 
