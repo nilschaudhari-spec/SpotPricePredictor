@@ -48,6 +48,7 @@ import com.spotpricepredictor.pro.presentation.components.InteractiveCandleChart
 import com.spotpricepredictor.pro.presentation.components.PeerComparisonDialog
 import com.spotpricepredictor.pro.presentation.components.PredictionResultCard
 import com.spotpricepredictor.pro.presentation.components.ResultsAndEventsDialog
+import com.spotpricepredictor.pro.presentation.components.CandlestickPatternsDialog
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
@@ -98,6 +99,12 @@ fun PredictorScreen(
     val isResultsEventsLoading by viewModel.isResultsEventsLoading.collectAsState()
     val showResultsEventsModal by viewModel.showResultsEventsModal.collectAsState()
     val selectedResultsEventsTab by viewModel.selectedResultsEventsTab.collectAsState()
+
+    val patternScanner by viewModel.patternScanner.collectAsState()
+    val isPatternsLoading by viewModel.isPatternsLoading.collectAsState()
+    val showPatternsModal by viewModel.showPatternsModal.collectAsState()
+    val selectedPatternTypeFilter by viewModel.selectedPatternTypeFilter.collectAsState()
+    val selectedPatternNameFilter by viewModel.selectedPatternNameFilter.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -210,6 +217,19 @@ fun PredictorScreen(
             onTabSelected = { viewModel.setResultsEventsTab(it) },
             onStockSelected = { viewModel.onSymbolSelected(it) },
             onDismiss = { viewModel.closeResultsEventsModal() }
+        )
+    }
+
+    if (showPatternsModal) {
+        CandlestickPatternsDialog(
+            data = patternScanner,
+            isLoading = isPatternsLoading,
+            selectedTypeFilter = selectedPatternTypeFilter,
+            selectedNameFilter = selectedPatternNameFilter,
+            onTypeFilterSelected = { viewModel.setPatternTypeFilter(it) },
+            onNameFilterSelected = { viewModel.setPatternNameFilter(it) },
+            onStockSelected = { viewModel.onSymbolSelected(it) },
+            onDismiss = { viewModel.closePatternsModal() }
         )
     }
 
@@ -925,6 +945,256 @@ fun PredictorScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // CANDLESTICK & PRICE ACTION PATTERNS SECTION (BUY & SELL PATTERNS)
+        var homePatternTab by remember { mutableStateOf("BUY") } // "BUY" or "SELL"
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+            border = BorderStroke(1.dp, CardBorder)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                // Header Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "🕯️ CANDLESTICK & PRICE ACTION PATTERNS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = TextPrimary,
+                                letterSpacing = 0.5.sp
+                            )
+                            if (isPatternsLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = ElectricCyan)
+                            }
+                        }
+                        Text(
+                            text = "Hammer, Harami, Rejection Wicks & False Breakouts",
+                            fontSize = 9.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    // View All Modal Button
+                    Box(
+                        modifier = Modifier
+                            .clickable { viewModel.openPatternsModal() }
+                            .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                            .border(0.8.dp, ElectricCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "EXPLORE ALL (8) ↗",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = ElectricCyan
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Pattern Type Selector (BUY vs SELL)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Buy Patterns Tab
+                    val isBuySelected = homePatternTab == "BUY"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { homePatternTab = "BUY" }
+                            .background(
+                                if (isBuySelected) NeonEmerald.copy(alpha = 0.2f) else CardBackground,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (isBuySelected) NeonEmerald else CardBorder,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🟢 BUY PATTERNS (4)",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isBuySelected) NeonEmerald else TextSecondary
+                        )
+                    }
+
+                    // Sell Patterns Tab
+                    val isSellSelected = homePatternTab == "SELL"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { homePatternTab = "SELL" }
+                            .background(
+                                if (isSellSelected) CrimsonAlert.copy(alpha = 0.2f) else CardBackground,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (isSellSelected) CrimsonAlert else CardBorder,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🔴 SELL PATTERNS (4)",
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSellSelected) CrimsonAlert else TextSecondary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // List of patterns for selected tab
+                val currentList = if (homePatternTab == "BUY") {
+                    patternScanner?.buyPatterns ?: emptyList()
+                } else {
+                    patternScanner?.sellPatterns ?: emptyList()
+                }
+
+                if (currentList.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Loading ${homePatternTab.lowercase()} pattern setups...",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(currentList) { pat ->
+                            val isSelected = pat.symbol.equals(selectedSymbol, ignoreCase = true)
+                            val isBuy = pat.patternType == "BUY"
+                            val accentColor = if (isBuy) NeonEmerald else CrimsonAlert
+
+                            Card(
+                                modifier = Modifier
+                                    .width(185.dp)
+                                    .clickable { viewModel.onSymbolSelected(pat.symbol) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                                border = BorderStroke(
+                                    if (isSelected) 1.5.dp else 1.dp,
+                                    if (isSelected) ElectricCyan else accentColor.copy(alpha = 0.4f)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = pat.symbol,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = if (isSelected) ElectricCyan else TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .background(accentColor.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                        ) {
+                                            Text(
+                                                text = "${pat.reliabilityPct}% Win",
+                                                fontSize = 8.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = accentColor
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(3.dp))
+
+                                    Text(
+                                        text = pat.patternName,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = pat.candleAnatomy,
+                                        fontSize = 8.5.sp,
+                                        color = TextSecondary,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        lineHeight = 11.sp
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text(text = "Entry", fontSize = 7.5.sp, color = TextSecondary)
+                                            Text(text = "₹${"%,.1f".format(pat.triggerPrice)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                        }
+                                        Column {
+                                            Text(text = "SL", fontSize = 7.5.sp, color = CrimsonAlert)
+                                            Text(text = "₹${"%,.1f".format(pat.stopLoss)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = CrimsonAlert)
+                                        }
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(text = "T1", fontSize = 7.5.sp, color = NeonEmerald)
+                                            Text(text = "₹${"%,.1f".format(pat.target1)}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(accentColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                                            .padding(vertical = 3.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Tap to Trade (${pat.riskRewardRatio})",
+                                            fontSize = 8.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = accentColor
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 

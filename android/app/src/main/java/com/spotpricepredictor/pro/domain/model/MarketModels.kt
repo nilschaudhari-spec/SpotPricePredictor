@@ -254,3 +254,32 @@ data class ResultsAndEventsData(
     val corporateEvents: List<CorporateEventItem> = emptyList(),
     val economicEvents: List<EconomicEventItem> = emptyList()
 )
+
+data class PatternDetectionItem(
+    val patternId: String,
+    val patternName: String,
+    val patternType: String, // "BUY" or "SELL"
+    val symbol: String,
+    val companyName: String,
+    val timeframe: String = "15m",
+    val reliabilityPct: Double = 85.0,
+    val status: String = "CONFIRMED",
+    val currentPrice: Double,
+    val triggerPrice: Double,
+    val stopLoss: Double,
+    val target1: Double,
+    val target2: Double,
+    val riskRewardRatio: String = "1:2.5",
+    val candleAnatomy: String,
+    val description: String,
+    val tradingRule: String,
+    val timestamp: String = ""
+)
+
+data class PatternScannerData(
+    val symbol: String? = null,
+    val totalDetected: Int = 0,
+    val buyPatterns: List<PatternDetectionItem> = emptyList(),
+    val sellPatterns: List<PatternDetectionItem> = emptyList(),
+    val allPatterns: List<PatternDetectionItem> = emptyList()
+)

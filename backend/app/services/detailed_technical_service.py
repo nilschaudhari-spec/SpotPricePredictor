@@ -278,3 +278,4 @@ class DetailedTechnicalService:
             pivot_points=pivot_points,
             summary_rationale=summary_rationale
         )
+

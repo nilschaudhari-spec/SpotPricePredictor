@@ -8,11 +8,13 @@ from app.services.corporate_actions_service import CorporateActionsService
 from app.services.peer_comparison_service import PeerComparisonService
 from app.services.detailed_technical_service import DetailedTechnicalService
 from app.services.results_events_service import ResultsAndEventsService
+from app.services.pattern_recognition_service import PatternRecognitionService
 from app.models.schemas import (
     CorporateActionsResponse,
     PeerComparisonResponse,
     DetailedTechnicalAnalysisResponse,
-    ResultsAndEventsResponse
+    ResultsAndEventsResponse,
+    PatternScannerResponse
 )
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
@@ -487,4 +489,18 @@ async def get_results_and_events(
     Returns quarterly financial results calendar, corporate board meetings, and macroeconomic events.
     """
     return ResultsAndEventsService.get_results_and_events(symbol=symbol)
+
+@router.get("/patterns", response_model=PatternScannerResponse)
+async def get_candlestick_patterns(
+    symbol: Optional[str] = Query(None, description="Optional symbol filter (e.g. RELIANCE, NIFTY, or ALL)"),
+    pattern_type: Optional[str] = Query("ALL", description="Pattern bias filter: BUY, SELL, or ALL"),
+    limit: int = Query(50, ge=1, le=100)
+) -> PatternScannerResponse:
+    """
+    Returns detected candlestick & price action patterns:
+    1. BUY: Hammer, Inverse Hammer, Low break close upside, Bullish Harami
+    2. SELL: Hanging Man, Shooting Star, High break, close Downside, Bearish Harami
+    """
+    return PatternRecognitionService.get_patterns(symbol=symbol, pattern_type=pattern_type, limit=limit)
+
 

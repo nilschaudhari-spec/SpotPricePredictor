@@ -416,5 +416,34 @@ data class ResultsAndEventsResponseDto(
     @SerializedName("economic_events") val economicEvents: List<EconomicEventItemDto> = emptyList()
 )
 
+data class PatternDetectionItemDto(
+    @SerializedName("pattern_id") val patternId: String,
+    @SerializedName("pattern_name") val patternName: String,
+    @SerializedName("pattern_type") val patternType: String,
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("timeframe") val timeframe: String = "15m",
+    @SerializedName("reliability_pct") val reliabilityPct: Double = 85.0,
+    @SerializedName("status") val status: String = "CONFIRMED",
+    @SerializedName("current_price") val currentPrice: Double,
+    @SerializedName("trigger_price") val triggerPrice: Double,
+    @SerializedName("stop_loss") val stopLoss: Double,
+    @SerializedName("target1") val target1: Double,
+    @SerializedName("target2") val target2: Double,
+    @SerializedName("risk_reward_ratio") val riskRewardRatio: String = "1:2.5",
+    @SerializedName("candle_anatomy") val candleAnatomy: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("trading_rule") val tradingRule: String,
+    @SerializedName("timestamp") val timestamp: String = ""
+)
+
+data class PatternScannerResponseDto(
+    @SerializedName("symbol") val symbol: String? = null,
+    @SerializedName("total_detected") val totalDetected: Int = 0,
+    @SerializedName("buy_patterns") val buyPatterns: List<PatternDetectionItemDto> = emptyList(),
+    @SerializedName("sell_patterns") val sellPatterns: List<PatternDetectionItemDto> = emptyList(),
+    @SerializedName("all_patterns") val allPatterns: List<PatternDetectionItemDto> = emptyList()
+)
+
 
 

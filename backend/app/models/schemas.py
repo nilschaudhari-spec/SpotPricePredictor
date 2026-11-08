@@ -440,3 +440,31 @@ class ResultsAndEventsResponse(BaseModel):
     corporate_events: List[CorporateEventItem] = []
     economic_events: List[EconomicEventItem] = []
 
+class PatternDetectionItem(BaseModel):
+    pattern_id: str
+    pattern_name: str # "Hammer", "Inverse Hammer", "Low break close upside", "Bullish Harami", "Hanging Man", "Shooting Star", "High break, close Downside", "Bearish Harami"
+    pattern_type: str # "BUY" or "SELL"
+    symbol: str
+    company_name: str
+    timeframe: str = "15m"
+    reliability_pct: float = 85.0
+    status: str = "CONFIRMED" # "CONFIRMED", "FORMING", "TRIGGERED"
+    current_price: float
+    trigger_price: float
+    stop_loss: float
+    target1: float
+    target2: float
+    risk_reward_ratio: str = "1:2.5"
+    candle_anatomy: str
+    description: str
+    trading_rule: str
+    timestamp: str = ""
+
+class PatternScannerResponse(BaseModel):
+    symbol: Optional[str] = None
+    total_detected: int
+    buy_patterns: List[PatternDetectionItem] = []
+    sell_patterns: List[PatternDetectionItem] = []
+    all_patterns: List[PatternDetectionItem] = []
+
+

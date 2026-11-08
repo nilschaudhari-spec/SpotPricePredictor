@@ -73,3 +73,40 @@ def test_movers_volume_and_value():
     assert len(data["most_active_value"]) > 0
     assert data["most_active_volume"][0]["volume"] > 0
     assert data["most_active_value"][0]["turnover_cr"] > 0
+
+def test_candlestick_patterns_endpoint():
+    # Test broad market scan
+    resp = client.get("/api/v1/market/patterns")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "buy_patterns" in data
+    assert "sell_patterns" in data
+    assert "all_patterns" in data
+    assert len(data["buy_patterns"]) > 0
+    assert len(data["sell_patterns"]) > 0
+
+    # Verify all 8 patterns exist in the catalog
+    pattern_names = {p["pattern_name"] for p in data["all_patterns"]}
+    assert "Hammer" in pattern_names
+    assert "Inverse Hammer" in pattern_names
+    assert "Low break close upside" in pattern_names
+    assert "Bullish Harami" in pattern_names
+    assert "Hanging Man" in pattern_names
+    assert "Shooting Star" in pattern_names
+    assert "High break, close Downside" in pattern_names
+    assert "Bearish Harami" in pattern_names
+
+    # Test single stock scan
+    resp_rel = client.get("/api/v1/market/patterns?symbol=RELIANCE")
+    assert resp_rel.status_code == 200
+    data_rel = resp_rel.json()
+    assert len(data_rel["all_patterns"]) == 8
+    assert all(p["symbol"] == "RELIANCE" for p in data_rel["all_patterns"])
+
+    # Test filter by BUY
+    resp_buy = client.get("/api/v1/market/patterns?pattern_type=BUY")
+    assert resp_buy.status_code == 200
+    data_buy = resp_buy.json()
+    assert all(p["pattern_type"] == "BUY" for p in data_buy["all_patterns"])
+
+

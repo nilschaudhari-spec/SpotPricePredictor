@@ -16,6 +16,7 @@ import com.spotpricepredictor.pro.data.api.models.ChartDataResponseDto
 import com.spotpricepredictor.pro.data.api.models.CorporateActionsResponseDto
 import com.spotpricepredictor.pro.data.api.models.DetailedTechnicalAnalysisResponseDto
 import com.spotpricepredictor.pro.data.api.models.GainersLosersResponseDto
+import com.spotpricepredictor.pro.data.api.models.PatternScannerResponseDto
 import com.spotpricepredictor.pro.data.api.models.PeerComparisonResponseDto
 import com.spotpricepredictor.pro.data.api.models.ResultsAndEventsResponseDto
 import com.spotpricepredictor.pro.data.api.models.TradeSuggestionsResponseDto
@@ -86,6 +87,13 @@ interface PredictorApiService {
     suspend fun getResultsAndEvents(
         @Query("symbol") symbol: String? = null
     ): Response<ResultsAndEventsResponseDto>
+
+    @GET("api/v1/market/patterns")
+    suspend fun getCandlestickPatterns(
+        @Query("symbol") symbol: String? = null,
+        @Query("pattern_type") patternType: String? = "ALL",
+        @Query("limit") limit: Int = 50
+    ): Response<PatternScannerResponseDto>
 }
 
 

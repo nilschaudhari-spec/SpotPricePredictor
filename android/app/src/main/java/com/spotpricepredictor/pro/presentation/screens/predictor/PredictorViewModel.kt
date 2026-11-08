@@ -18,6 +18,8 @@ import com.spotpricepredictor.pro.domain.model.CorporateActionsData
 import com.spotpricepredictor.pro.domain.model.PeerComparisonData
 import com.spotpricepredictor.pro.domain.model.DetailedTechnicalsData
 import com.spotpricepredictor.pro.domain.model.ResultsAndEventsData
+import com.spotpricepredictor.pro.domain.model.PatternScannerData
+import com.spotpricepredictor.pro.domain.model.PatternDetectionItem
 import com.spotpricepredictor.pro.domain.repository.MarketRepository
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetGainersLosersUseCase
@@ -96,6 +98,13 @@ class PredictorViewModel @Inject constructor(
     val showResultsEventsModal = MutableStateFlow(false)
     val selectedResultsEventsTab = MutableStateFlow("RESULTS") // "RESULTS", "EVENTS", "ECONOMIC"
 
+    // Candlestick & Price Action Patterns
+    val patternScanner = MutableStateFlow<PatternScannerData?>(null)
+    val isPatternsLoading = MutableStateFlow(false)
+    val showPatternsModal = MutableStateFlow(false)
+    val selectedPatternTypeFilter = MutableStateFlow("ALL") // "ALL", "BUY", "SELL"
+    val selectedPatternNameFilter = MutableStateFlow("ALL")
+
     // Market Status (Live vs Closed)
     val marketStatus = MutableStateFlow(MarketStatusHelper.getMarketStatus("NIFTY"))
     val isDemoSimulation = MutableStateFlow(false)
@@ -136,6 +145,7 @@ class PredictorViewModel @Inject constructor(
         fetchPeerComparison("NIFTY")
         fetchDetailedTechnicals("NIFTY")
         fetchResultsEvents("NIFTY")
+        fetchPatterns("NIFTY")
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
             start1msHighFrequencyTicker()
@@ -254,6 +264,7 @@ class PredictorViewModel @Inject constructor(
         fetchPeerComparison(clean)
         fetchCorporateActions(clean)
         fetchResultsEvents(clean)
+        fetchPatterns(clean)
 
         // 3. Control 1ms stream based on market open status
         if (!mStatus.isOpen && !isDemoSimulation.value) {
@@ -621,6 +632,36 @@ class PredictorViewModel @Inject constructor(
 
     fun closeResultsEventsModal() {
         showResultsEventsModal.value = false
+    }
+
+    // Candlestick & Price Action Patterns
+    fun fetchPatterns(symbol: String? = selectedSymbol.value, patternType: String? = selectedPatternTypeFilter.value) {
+        viewModelScope.launch {
+            isPatternsLoading.value = true
+            val res = marketRepository.getCandlestickPatterns(symbol, patternType, limit = 50)
+            res.onSuccess { data ->
+                patternScanner.value = data
+            }
+            isPatternsLoading.value = false
+        }
+    }
+
+    fun setPatternTypeFilter(type: String) {
+        selectedPatternTypeFilter.value = type
+        fetchPatterns(symbol = selectedSymbol.value, patternType = type)
+    }
+
+    fun setPatternNameFilter(name: String) {
+        selectedPatternNameFilter.value = name
+    }
+
+    fun openPatternsModal() {
+        showPatternsModal.value = true
+        fetchPatterns()
+    }
+
+    fun closePatternsModal() {
+        showPatternsModal.value = false
     }
 
     override fun onCleared() {

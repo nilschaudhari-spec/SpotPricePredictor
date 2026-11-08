@@ -330,3 +330,4 @@ class ResultsAndEventsService:
             corporate_events=event_items,
             economic_events=economic_items
         )
+

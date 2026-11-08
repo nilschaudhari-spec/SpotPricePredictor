@@ -310,3 +310,4 @@ private fun CorporateActionCard(
         }
     }
 }
+

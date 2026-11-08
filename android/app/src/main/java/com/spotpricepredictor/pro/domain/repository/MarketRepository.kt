@@ -72,5 +72,11 @@ interface MarketRepository {
     suspend fun getResultsAndEvents(
         symbol: String? = null
     ): Result<com.spotpricepredictor.pro.domain.model.ResultsAndEventsData>
+
+    suspend fun getCandlestickPatterns(
+        symbol: String? = null,
+        patternType: String? = "ALL",
+        limit: Int = 50
+    ): Result<com.spotpricepredictor.pro.domain.model.PatternScannerData>
 }
 
