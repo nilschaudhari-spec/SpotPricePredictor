@@ -107,12 +107,150 @@ data class MarketMoverItem(
     val change: Double,
     val changePercent: Double,
     val exchange: String = "NSE",
-    val isPositive: Boolean = true
+    val isPositive: Boolean = true,
+    val volume: Long = 0L,
+    val volumeStr: String = "",
+    val turnoverCr: Double = 0.0,
+    val turnoverStr: String = ""
 )
 
 data class GainersLosersData(
     val exchange: String = "NSE",
     val timestamp: String = "",
     val gainers: List<MarketMoverItem> = emptyList(),
-    val losers: List<MarketMoverItem> = emptyList()
+    val losers: List<MarketMoverItem> = emptyList(),
+    val mostActiveVolume: List<MarketMoverItem> = emptyList(),
+    val mostActiveValue: List<MarketMoverItem> = emptyList()
+)
+
+data class CorporateActionItem(
+    val id: String,
+    val symbol: String,
+    val companyName: String,
+    val actionType: String,
+    val exDate: String,
+    val recordDate: String,
+    val details: String,
+    val amount: Double? = null,
+    val ratio: String? = null,
+    val impact: String = "Neutral"
+)
+
+data class CorporateActionsData(
+    val symbol: String? = null,
+    val totalActions: Int = 0,
+    val actions: List<CorporateActionItem> = emptyList()
+)
+
+data class PeerStockMetrics(
+    val symbol: String,
+    val name: String,
+    val cmp: Double,
+    val changePct: Double,
+    val peRatio: Double,
+    val pbRatio: Double,
+    val marketCapCr: Double,
+    val marketCapStr: String,
+    val roe: Double,
+    val roce: Double,
+    val dividendYield: Double,
+    val netProfitMargin: Double,
+    val high52w: Double,
+    val low52w: Double,
+    val isTargetStock: Boolean = false
+)
+
+data class PeerComparisonData(
+    val symbol: String,
+    val companyName: String,
+    val sector: String,
+    val industry: String,
+    val peers: List<PeerStockMetrics> = emptyList()
+)
+
+data class MovingAverageItem(
+    val period: Int,
+    val smaValue: Double,
+    val smaCall: String,
+    val emaValue: Double,
+    val emaCall: String
+)
+
+data class OscillatorItem(
+    val name: String,
+    val value: Double,
+    val signal: String,
+    val interpretation: String
+)
+
+data class PivotPointLevel(
+    val name: String,
+    val p: Double,
+    val s1: Double,
+    val s2: Double,
+    val s3: Double,
+    val r1: Double,
+    val r2: Double,
+    val r3: Double,
+    val s4: Double? = null,
+    val r4: Double? = null
+)
+
+data class DetailedTechnicalsData(
+    val symbol: String,
+    val spotPrice: Double,
+    val change: Double,
+    val changePct: Double,
+    val overallCall: String,
+    val technicalScore: Double,
+    val bullishCount: Int,
+    val bearishCount: Int,
+    val neutralCount: Int,
+    val movingAverages: List<MovingAverageItem> = emptyList(),
+    val oscillators: List<OscillatorItem> = emptyList(),
+    val pivotPoints: Map<String, PivotPointLevel> = emptyMap(),
+    val summaryRationale: String = ""
+)
+
+data class QuarterlyResultItem(
+    val id: String,
+    val symbol: String,
+    val companyName: String,
+    val resultDate: String,
+    val quarter: String,
+    val revenueActualCr: Double? = null,
+    val revenueEstimateCr: Double? = null,
+    val patActualCr: Double? = null,
+    val patEstimateCr: Double? = null,
+    val yoyGrowthPct: Double? = null,
+    val status: String,
+    val purpose: String = "Financial Results"
+)
+
+data class CorporateEventItem(
+    val id: String,
+    val symbol: String,
+    val companyName: String,
+    val eventDate: String,
+    val category: String,
+    val title: String,
+    val description: String
+)
+
+data class EconomicEventItem(
+    val eventId: String,
+    val title: String,
+    val date: String,
+    val impactLevel: String,
+    val forecast: String? = null,
+    val previous: String? = null,
+    val actual: String? = null,
+    val sectorImpact: String
+)
+
+data class ResultsAndEventsData(
+    val symbol: String? = null,
+    val quarterlyResults: List<QuarterlyResultItem> = emptyList(),
+    val corporateEvents: List<CorporateEventItem> = emptyList(),
+    val economicEvents: List<EconomicEventItem> = emptyList()
 )

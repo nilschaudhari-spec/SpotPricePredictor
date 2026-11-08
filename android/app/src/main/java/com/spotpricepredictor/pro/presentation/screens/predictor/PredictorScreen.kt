@@ -41,9 +41,13 @@ import com.spotpricepredictor.pro.domain.model.PredictionHorizon
 import com.spotpricepredictor.pro.domain.model.TrendDirection
 import com.spotpricepredictor.pro.presentation.components.AddStockDialog
 import com.spotpricepredictor.pro.presentation.components.AdvancedMetricsCard
+import com.spotpricepredictor.pro.presentation.components.CorporateActionsDialog
+import com.spotpricepredictor.pro.presentation.components.DetailedTechnicalsDialog
 import com.spotpricepredictor.pro.presentation.components.DisclaimerBanner
 import com.spotpricepredictor.pro.presentation.components.InteractiveCandleChart
+import com.spotpricepredictor.pro.presentation.components.PeerComparisonDialog
 import com.spotpricepredictor.pro.presentation.components.PredictionResultCard
+import com.spotpricepredictor.pro.presentation.components.ResultsAndEventsDialog
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
@@ -75,6 +79,25 @@ fun PredictorScreen(
     val isMoversLoading by viewModel.isMoversLoading.collectAsState()
     val moversExchange by viewModel.moversExchange.collectAsState()
     val moversTab by viewModel.moversTab.collectAsState()
+
+    val corporateActions by viewModel.corporateActions.collectAsState()
+    val isCorporateActionsLoading by viewModel.isCorporateActionsLoading.collectAsState()
+    val showCorporateActionsModal by viewModel.showCorporateActionsModal.collectAsState()
+    val selectedCorporateActionsFilter by viewModel.selectedCorporateActionsFilter.collectAsState()
+
+    val peerComparison by viewModel.peerComparison.collectAsState()
+    val isPeerComparisonLoading by viewModel.isPeerComparisonLoading.collectAsState()
+    val showPeerModal by viewModel.showPeerModal.collectAsState()
+
+    val detailedTechnicals by viewModel.detailedTechnicals.collectAsState()
+    val isTechnicalsLoading by viewModel.isTechnicalsLoading.collectAsState()
+    val showTechnicalsModal by viewModel.showTechnicalsModal.collectAsState()
+    val selectedTechnicalsTab by viewModel.selectedTechnicalsTab.collectAsState()
+
+    val resultsAndEvents by viewModel.resultsAndEvents.collectAsState()
+    val isResultsEventsLoading by viewModel.isResultsEventsLoading.collectAsState()
+    val showResultsEventsModal by viewModel.showResultsEventsModal.collectAsState()
+    val selectedResultsEventsTab by viewModel.selectedResultsEventsTab.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -146,6 +169,47 @@ fun PredictorScreen(
         AddStockDialog(
             onDismiss = { showAddStockDialog = false },
             onAddSymbol = { viewModel.addCustomStock(it) }
+        )
+    }
+
+    if (showCorporateActionsModal) {
+        CorporateActionsDialog(
+            data = corporateActions,
+            isLoading = isCorporateActionsLoading,
+            selectedFilter = selectedCorporateActionsFilter,
+            onFilterSelected = { viewModel.setCorporateActionsFilter(it) },
+            onStockSelected = { viewModel.onSymbolSelected(it) },
+            onDismiss = { viewModel.closeCorporateActionsModal() }
+        )
+    }
+
+    if (showPeerModal) {
+        PeerComparisonDialog(
+            data = peerComparison,
+            isLoading = isPeerComparisonLoading,
+            onStockSelected = { viewModel.onSymbolSelected(it) },
+            onDismiss = { viewModel.closePeerModal() }
+        )
+    }
+
+    if (showTechnicalsModal) {
+        DetailedTechnicalsDialog(
+            data = detailedTechnicals,
+            isLoading = isTechnicalsLoading,
+            selectedTab = selectedTechnicalsTab,
+            onTabSelected = { viewModel.setTechnicalsTab(it) },
+            onDismiss = { viewModel.closeTechnicalsModal() }
+        )
+    }
+
+    if (showResultsEventsModal) {
+        ResultsAndEventsDialog(
+            data = resultsAndEvents,
+            isLoading = isResultsEventsLoading,
+            selectedTab = selectedResultsEventsTab,
+            onTabSelected = { viewModel.setResultsEventsTab(it) },
+            onStockSelected = { viewModel.onSymbolSelected(it) },
+            onDismiss = { viewModel.closeResultsEventsModal() }
         )
     }
 
@@ -476,67 +540,62 @@ fun PredictorScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Movers Tab (GAINERS vs LOSERS)
+                // Movers Tab (GAINERS, LOSERS, VOLUME, VALUE)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { viewModel.setMoversTab("GAINERS") }
-                            .background(
-                                if (moversTab == "GAINERS") NeonEmerald.copy(alpha = 0.2f) else CardBackground,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                1.dp,
-                                if (moversTab == "GAINERS") NeonEmerald else CardBorder,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "🟢 TOP GAINERS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (moversTab == "GAINERS") NeonEmerald else TextSecondary
-                        )
-                    }
+                    listOf(
+                        "GAINERS" to "🟢 GAINERS",
+                        "LOSERS" to "🔴 LOSERS",
+                        "VOLUME" to "📊 VOLUME",
+                        "VALUE" to "💰 VALUE"
+                    ).forEach { (tabKey, tabLabel) ->
+                        val isSelected = (moversTab == tabKey)
+                        val tabColor = when (tabKey) {
+                            "GAINERS" -> NeonEmerald
+                            "LOSERS" -> CrimsonAlert
+                            "VOLUME" -> ElectricCyan
+                            else -> RoyalViolet
+                        }
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { viewModel.setMoversTab("LOSERS") }
-                            .background(
-                                if (moversTab == "LOSERS") CrimsonAlert.copy(alpha = 0.2f) else CardBackground,
-                                RoundedCornerShape(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { viewModel.setMoversTab(tabKey) }
+                                .background(
+                                    if (isSelected) tabColor.copy(alpha = 0.2f) else CardBackground,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) tabColor else CardBorder,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tabLabel,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) tabColor else TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            .border(
-                                1.dp,
-                                if (moversTab == "LOSERS") CrimsonAlert else CardBorder,
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "🔴 TOP LOSERS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (moversTab == "LOSERS") CrimsonAlert else TextSecondary
-                        )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Cards List
-                val moversList = if (moversTab == "GAINERS") {
-                    gainersLosers?.gainers ?: emptyList()
-                } else {
-                    gainersLosers?.losers ?: emptyList()
+                val moversList = when (moversTab) {
+                    "GAINERS" -> gainersLosers?.gainers ?: emptyList()
+                    "LOSERS" -> gainersLosers?.losers ?: emptyList()
+                    "VOLUME" -> gainersLosers?.mostActiveVolume ?: emptyList()
+                    "VALUE" -> gainersLosers?.mostActiveValue ?: emptyList()
+                    else -> gainersLosers?.gainers ?: emptyList()
                 }
 
                 if (moversList.isEmpty()) {
@@ -562,7 +621,7 @@ fun PredictorScreen(
 
                             Card(
                                 modifier = Modifier
-                                    .width(148.dp)
+                                    .width(156.dp)
                                     .clickable { viewModel.onSymbolSelected(mover.symbol) },
                                 shape = RoundedCornerShape(10.dp),
                                 colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -640,6 +699,31 @@ fun PredictorScreen(
                                             )
                                         }
                                     }
+
+                                    if (mover.volumeStr.isNotBlank() || mover.turnoverStr.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (mover.volumeStr.isNotBlank()) {
+                                                Text(
+                                                    text = "Vol ${mover.volumeStr}",
+                                                    fontSize = 8.sp,
+                                                    color = TextSecondary
+                                                )
+                                            }
+                                            if (mover.turnoverStr.isNotBlank()) {
+                                                Text(
+                                                    text = mover.turnoverStr,
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = ElectricCyan
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -647,6 +731,200 @@ fun PredictorScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // MARKET INTELLIGENCE & RESEARCH ACTION BAR
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+            border = BorderStroke(1.dp, CardBorder)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "🔬 QUANT INTELLIGENCE & RESEARCH",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextPrimary,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "In-depth analytics for $selectedSymbol • Tap to explore",
+                            fontSize = 9.sp,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .background(RoyalViolet.copy(alpha = 0.18f), RoundedCornerShape(6.dp))
+                            .border(0.8.dp, RoyalViolet.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "PRO",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = RoyalViolet
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 1. Technical Analysis
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openTechnicalsModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "🎯 Technicals",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ElectricCyan
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val techCall = detailedTechnicals?.overallCall ?: "Analysis"
+                            Text(
+                                text = techCall,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (techCall.contains("BUY")) NeonEmerald else if (techCall.contains("SELL")) CrimsonAlert else TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "MAs • RSI • Pivots",
+                                fontSize = 8.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+
+                    // 2. Peer Comparison
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openPeerModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "🏢 Peer Bench",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = RoyalViolet
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = peerComparison?.sector ?: "Industry Peers",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "P/E • P/B • ROE",
+                                fontSize = 8.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 3. Corporate Actions
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openCorporateActionsModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "📜 Corp Actions",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AmberWarning
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val totalCa = corporateActions?.totalActions ?: 0
+                            Text(
+                                text = if (totalCa > 0) "$totalCa Actions" else "Upcoming",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "Divs • Splits • Bonus",
+                                fontSize = 8.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+
+                    // 4. Results & Events
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { viewModel.openResultsEventsModal() },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        border = BorderStroke(1.dp, CardBorder)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "📅 Results/Events",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonEmerald
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Q2/Q3 Earnings",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "Quarterly • RBI • Fed",
+                                fontSize = 8.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
 
         Spacer(modifier = Modifier.height(14.dp))
 

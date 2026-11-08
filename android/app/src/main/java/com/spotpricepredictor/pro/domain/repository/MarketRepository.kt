@@ -54,5 +54,23 @@ interface MarketRepository {
         exchange: String = "NSE",
         limit: Int = 10
     ): Result<com.spotpricepredictor.pro.domain.model.GainersLosersData>
+
+    suspend fun getCorporateActions(
+        symbol: String? = null,
+        actionType: String? = "ALL",
+        limit: Int = 50
+    ): Result<com.spotpricepredictor.pro.domain.model.CorporateActionsData>
+
+    suspend fun getPeerComparison(
+        symbol: String
+    ): Result<com.spotpricepredictor.pro.domain.model.PeerComparisonData>
+
+    suspend fun getDetailedTechnicals(
+        symbol: String
+    ): Result<com.spotpricepredictor.pro.domain.model.DetailedTechnicalsData>
+
+    suspend fun getResultsAndEvents(
+        symbol: String? = null
+    ): Result<com.spotpricepredictor.pro.domain.model.ResultsAndEventsData>
 }
 

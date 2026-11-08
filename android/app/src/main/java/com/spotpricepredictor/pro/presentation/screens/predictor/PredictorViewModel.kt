@@ -14,6 +14,11 @@ import com.spotpricepredictor.pro.domain.model.MarketStatusHelper
 import com.spotpricepredictor.pro.domain.model.MarketStatusInfo
 import com.spotpricepredictor.pro.domain.model.GainersLosersData
 import com.spotpricepredictor.pro.domain.model.MarketMoverItem
+import com.spotpricepredictor.pro.domain.model.CorporateActionsData
+import com.spotpricepredictor.pro.domain.model.PeerComparisonData
+import com.spotpricepredictor.pro.domain.model.DetailedTechnicalsData
+import com.spotpricepredictor.pro.domain.model.ResultsAndEventsData
+import com.spotpricepredictor.pro.domain.repository.MarketRepository
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetGainersLosersUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetRealtimeQuoteUseCase
@@ -47,7 +52,8 @@ class PredictorViewModel @Inject constructor(
     private val watchlistManager: WatchlistManager,
     private val getRealtimeQuoteUseCase: GetRealtimeQuoteUseCase,
     private val getChartDataUseCase: GetChartDataUseCase,
-    private val getGainersLosersUseCase: GetGainersLosersUseCase
+    private val getGainersLosersUseCase: GetGainersLosersUseCase,
+    private val marketRepository: MarketRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PredictorUiState>(PredictorUiState.Idle)
@@ -61,11 +67,34 @@ class PredictorViewModel @Inject constructor(
     val lastSyncTime = MutableStateFlow<String>("Live")
     val isAutoDetectActive = MutableStateFlow(true)
 
-    // Top Gainers & Losers (NSE & BSE)
+    // Top Gainers & Losers & Most Active by Volume/Value (NSE & BSE)
     val gainersLosers = MutableStateFlow<GainersLosersData?>(null)
     val isMoversLoading = MutableStateFlow(false)
     val moversExchange = MutableStateFlow("NSE") // "NSE" or "BSE"
-    val moversTab = MutableStateFlow("GAINERS") // "GAINERS" or "LOSERS"
+    val moversTab = MutableStateFlow("GAINERS") // "GAINERS", "LOSERS", "VOLUME", or "VALUE"
+
+    // Corporate Actions
+    val corporateActions = MutableStateFlow<CorporateActionsData?>(null)
+    val isCorporateActionsLoading = MutableStateFlow(false)
+    val showCorporateActionsModal = MutableStateFlow(false)
+    val selectedCorporateActionsFilter = MutableStateFlow("ALL") // "ALL", "DIVIDEND", "BONUS", "SPLIT"
+
+    // Peer Comparison
+    val peerComparison = MutableStateFlow<PeerComparisonData?>(null)
+    val isPeerComparisonLoading = MutableStateFlow(false)
+    val showPeerModal = MutableStateFlow(false)
+
+    // Detailed Technical Analysis
+    val detailedTechnicals = MutableStateFlow<DetailedTechnicalsData?>(null)
+    val isTechnicalsLoading = MutableStateFlow(false)
+    val showTechnicalsModal = MutableStateFlow(false)
+    val selectedTechnicalsTab = MutableStateFlow("MAs") // "MAs", "OSCILLATORS", "PIVOTS"
+
+    // Results and Macro Events
+    val resultsAndEvents = MutableStateFlow<ResultsAndEventsData?>(null)
+    val isResultsEventsLoading = MutableStateFlow(false)
+    val showResultsEventsModal = MutableStateFlow(false)
+    val selectedResultsEventsTab = MutableStateFlow("RESULTS") // "RESULTS", "EVENTS", "ECONOMIC"
 
     // Market Status (Live vs Closed)
     val marketStatus = MutableStateFlow(MarketStatusHelper.getMarketStatus("NIFTY"))
@@ -103,6 +132,10 @@ class PredictorViewModel @Inject constructor(
         is1msStreamingActive.value = mStatus.isOpen
         fetchLiveQuote("NIFTY", autoUpdateInput = true)
         fetchGainersLosers("NSE")
+        fetchCorporateActions("NIFTY")
+        fetchPeerComparison("NIFTY")
+        fetchDetailedTechnicals("NIFTY")
+        fetchResultsEvents("NIFTY")
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
             start1msHighFrequencyTicker()
@@ -215,8 +248,12 @@ class PredictorViewModel @Inject constructor(
         val baselineSpot = StockCatalog.getDefaultSpot(clean)
         spotPriceInput.value = baselineSpot.toString()
 
-        // 2. Fetch live or official closing market quote
+        // 2. Fetch live or official closing market quote & deep analysis
         fetchLiveQuote(clean, autoUpdateInput = true)
+        fetchDetailedTechnicals(clean)
+        fetchPeerComparison(clean)
+        fetchCorporateActions(clean)
+        fetchResultsEvents(clean)
 
         // 3. Control 1ms stream based on market open status
         if (!mStatus.isOpen && !isDemoSimulation.value) {
@@ -487,6 +524,103 @@ class PredictorViewModel @Inject constructor(
                 isChartLoading.value = false
             }
         }
+    }
+
+    // Corporate Actions
+    fun fetchCorporateActions(symbol: String? = selectedSymbol.value, actionType: String? = selectedCorporateActionsFilter.value) {
+        viewModelScope.launch {
+            isCorporateActionsLoading.value = true
+            val res = marketRepository.getCorporateActions(symbol = symbol, actionType = actionType, limit = 50)
+            res.onSuccess { data ->
+                corporateActions.value = data
+            }
+            isCorporateActionsLoading.value = false
+        }
+    }
+
+    fun setCorporateActionsFilter(filter: String) {
+        selectedCorporateActionsFilter.value = filter
+        fetchCorporateActions(symbol = selectedSymbol.value, actionType = filter)
+    }
+
+    fun openCorporateActionsModal() {
+        showCorporateActionsModal.value = true
+        fetchCorporateActions()
+    }
+
+    fun closeCorporateActionsModal() {
+        showCorporateActionsModal.value = false
+    }
+
+    // Peer Comparison
+    fun fetchPeerComparison(symbol: String = selectedSymbol.value) {
+        viewModelScope.launch {
+            isPeerComparisonLoading.value = true
+            val res = marketRepository.getPeerComparison(symbol)
+            res.onSuccess { data ->
+                peerComparison.value = data
+            }
+            isPeerComparisonLoading.value = false
+        }
+    }
+
+    fun openPeerModal() {
+        showPeerModal.value = true
+        fetchPeerComparison()
+    }
+
+    fun closePeerModal() {
+        showPeerModal.value = false
+    }
+
+    // Detailed Technical Analysis
+    fun fetchDetailedTechnicals(symbol: String = selectedSymbol.value) {
+        viewModelScope.launch {
+            isTechnicalsLoading.value = true
+            val res = marketRepository.getDetailedTechnicals(symbol)
+            res.onSuccess { data ->
+                detailedTechnicals.value = data
+            }
+            isTechnicalsLoading.value = false
+        }
+    }
+
+    fun setTechnicalsTab(tab: String) {
+        selectedTechnicalsTab.value = tab
+    }
+
+    fun openTechnicalsModal() {
+        showTechnicalsModal.value = true
+        fetchDetailedTechnicals()
+    }
+
+    fun closeTechnicalsModal() {
+        showTechnicalsModal.value = false
+    }
+
+    // Results and Macro Events
+    fun fetchResultsEvents(symbol: String? = selectedSymbol.value) {
+        viewModelScope.launch {
+            isResultsEventsLoading.value = true
+            val res = marketRepository.getResultsAndEvents(symbol)
+            res.onSuccess { data ->
+                resultsAndEvents.value = data
+            }
+            isResultsEventsLoading.value = false
+        }
+    }
+
+    fun setResultsEventsTab(tab: String) {
+        selectedResultsEventsTab.value = tab
+    }
+
+    fun openResultsEventsModal() {
+        showResultsEventsModal.value = true
+        fetchResultsEvents()
+    }
+
+    fun closeResultsEventsModal() {
+        showResultsEventsModal.value = false
     }
 
     override fun onCleared() {

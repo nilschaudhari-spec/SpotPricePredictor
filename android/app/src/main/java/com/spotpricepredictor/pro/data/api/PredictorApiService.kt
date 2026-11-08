@@ -13,7 +13,11 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 import com.spotpricepredictor.pro.data.api.models.ChartDataResponseDto
+import com.spotpricepredictor.pro.data.api.models.CorporateActionsResponseDto
+import com.spotpricepredictor.pro.data.api.models.DetailedTechnicalAnalysisResponseDto
 import com.spotpricepredictor.pro.data.api.models.GainersLosersResponseDto
+import com.spotpricepredictor.pro.data.api.models.PeerComparisonResponseDto
+import com.spotpricepredictor.pro.data.api.models.ResultsAndEventsResponseDto
 import com.spotpricepredictor.pro.data.api.models.TradeSuggestionsResponseDto
 
 interface PredictorApiService {
@@ -60,6 +64,28 @@ interface PredictorApiService {
         @Query("exchange") exchange: String = "NSE",
         @Query("limit") limit: Int = 10
     ): Response<GainersLosersResponseDto>
+
+    @GET("api/v1/market/corporate-actions")
+    suspend fun getCorporateActions(
+        @Query("symbol") symbol: String? = null,
+        @Query("action_type") actionType: String? = "ALL",
+        @Query("limit") limit: Int = 50
+    ): Response<CorporateActionsResponseDto>
+
+    @GET("api/v1/market/peer-comparison")
+    suspend fun getPeerComparison(
+        @Query("symbol") symbol: String
+    ): Response<PeerComparisonResponseDto>
+
+    @GET("api/v1/market/detailed-technicals")
+    suspend fun getDetailedTechnicals(
+        @Query("symbol") symbol: String
+    ): Response<DetailedTechnicalAnalysisResponseDto>
+
+    @GET("api/v1/market/results-events")
+    suspend fun getResultsAndEvents(
+        @Query("symbol") symbol: String? = null
+    ): Response<ResultsAndEventsResponseDto>
 }
 
 

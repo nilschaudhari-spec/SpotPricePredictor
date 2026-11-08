@@ -268,14 +268,153 @@ data class MarketMoverItemDto(
     @SerializedName("change") val change: Double,
     @SerializedName("change_percent") val changePercent: Double,
     @SerializedName("exchange") val exchange: String = "NSE",
-    @SerializedName("is_positive") val isPositive: Boolean = true
+    @SerializedName("is_positive") val isPositive: Boolean = true,
+    @SerializedName("volume") val volume: Long = 0L,
+    @SerializedName("volume_str") val volumeStr: String = "",
+    @SerializedName("turnover_cr") val turnoverCr: Double = 0.0,
+    @SerializedName("turnover_str") val turnoverStr: String = ""
 )
 
 data class GainersLosersResponseDto(
     @SerializedName("exchange") val exchange: String = "NSE",
     @SerializedName("timestamp") val timestamp: String = "",
     @SerializedName("gainers") val gainers: List<MarketMoverItemDto> = emptyList(),
-    @SerializedName("losers") val losers: List<MarketMoverItemDto> = emptyList()
+    @SerializedName("losers") val losers: List<MarketMoverItemDto> = emptyList(),
+    @SerializedName("most_active_volume") val mostActiveVolume: List<MarketMoverItemDto> = emptyList(),
+    @SerializedName("most_active_value") val mostActiveValue: List<MarketMoverItemDto> = emptyList()
 )
+
+data class CorporateActionItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("action_type") val actionType: String,
+    @SerializedName("ex_date") val exDate: String,
+    @SerializedName("record_date") val recordDate: String,
+    @SerializedName("details") val details: String,
+    @SerializedName("amount") val amount: Double? = null,
+    @SerializedName("ratio") val ratio: String? = null,
+    @SerializedName("impact") val impact: String = "Neutral"
+)
+
+data class CorporateActionsResponseDto(
+    @SerializedName("symbol") val symbol: String? = null,
+    @SerializedName("total_actions") val totalActions: Int = 0,
+    @SerializedName("actions") val actions: List<CorporateActionItemDto> = emptyList()
+)
+
+data class PeerStockMetricsDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("cmp") val cmp: Double,
+    @SerializedName("change_pct") val changePct: Double,
+    @SerializedName("pe_ratio") val peRatio: Double,
+    @SerializedName("pb_ratio") val pbRatio: Double,
+    @SerializedName("market_cap_cr") val marketCapCr: Double,
+    @SerializedName("market_cap_str") val marketCapStr: String,
+    @SerializedName("roe") val roe: Double,
+    @SerializedName("roce") val roce: Double,
+    @SerializedName("dividend_yield") val dividendYield: Double,
+    @SerializedName("net_profit_margin") val netProfitMargin: Double,
+    @SerializedName("high_52w") val high52w: Double,
+    @SerializedName("low_52w") val low52w: Double,
+    @SerializedName("is_target_stock") val isTargetStock: Boolean = false
+)
+
+data class PeerComparisonResponseDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("sector") val sector: String,
+    @SerializedName("industry") val industry: String,
+    @SerializedName("peers") val peers: List<PeerStockMetricsDto> = emptyList()
+)
+
+data class MovingAverageItemDto(
+    @SerializedName("period") val period: Int,
+    @SerializedName("sma_value") val smaValue: Double,
+    @SerializedName("sma_call") val smaCall: String,
+    @SerializedName("ema_value") val emaValue: Double,
+    @SerializedName("ema_call") val emaCall: String
+)
+
+data class OscillatorItemDto(
+    @SerializedName("name") val name: String,
+    @SerializedName("value") val value: Double,
+    @SerializedName("signal") val signal: String,
+    @SerializedName("interpretation") val interpretation: String
+)
+
+data class PivotPointLevelDto(
+    @SerializedName("name") val name: String,
+    @SerializedName("p") val p: Double,
+    @SerializedName("s1") val s1: Double,
+    @SerializedName("s2") val s2: Double,
+    @SerializedName("s3") val s3: Double,
+    @SerializedName("r1") val r1: Double,
+    @SerializedName("r2") val r2: Double,
+    @SerializedName("r3") val r3: Double,
+    @SerializedName("s4") val s4: Double? = null,
+    @SerializedName("r4") val r4: Double? = null
+)
+
+data class DetailedTechnicalAnalysisResponseDto(
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("spot_price") val spotPrice: Double,
+    @SerializedName("change") val change: Double,
+    @SerializedName("change_pct") val changePct: Double,
+    @SerializedName("overall_call") val overallCall: String,
+    @SerializedName("technical_score") val technicalScore: Double,
+    @SerializedName("bullish_count") val bullishCount: Int,
+    @SerializedName("bearish_count") val bearishCount: Int,
+    @SerializedName("neutral_count") val neutralCount: Int,
+    @SerializedName("moving_averages") val movingAverages: List<MovingAverageItemDto> = emptyList(),
+    @SerializedName("oscillators") val oscillators: List<OscillatorItemDto> = emptyList(),
+    @SerializedName("pivot_points") val pivotPoints: Map<String, PivotPointLevelDto> = emptyMap(),
+    @SerializedName("summary_rationale") val summaryRationale: String = ""
+)
+
+data class QuarterlyResultItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("result_date") val resultDate: String,
+    @SerializedName("quarter") val quarter: String,
+    @SerializedName("revenue_actual_cr") val revenueActualCr: Double? = null,
+    @SerializedName("revenue_estimate_cr") val revenueEstimateCr: Double? = null,
+    @SerializedName("pat_actual_cr") val patActualCr: Double? = null,
+    @SerializedName("pat_estimate_cr") val patEstimateCr: Double? = null,
+    @SerializedName("yoy_growth_pct") val yoyGrowthPct: Double? = null,
+    @SerializedName("status") val status: String,
+    @SerializedName("purpose") val purpose: String = "Financial Results"
+)
+
+data class CorporateEventItemDto(
+    @SerializedName("id") val id: String,
+    @SerializedName("symbol") val symbol: String,
+    @SerializedName("company_name") val companyName: String,
+    @SerializedName("event_date") val eventDate: String,
+    @SerializedName("category") val category: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String
+)
+
+data class EconomicEventItemDto(
+    @SerializedName("event_id") val eventId: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("date") val date: String,
+    @SerializedName("impact_level") val impactLevel: String,
+    @SerializedName("forecast") val forecast: String? = null,
+    @SerializedName("previous") val previous: String? = null,
+    @SerializedName("actual") val actual: String? = null,
+    @SerializedName("sector_impact") val sectorImpact: String
+)
+
+data class ResultsAndEventsResponseDto(
+    @SerializedName("symbol") val symbol: String? = null,
+    @SerializedName("quarterly_results") val quarterlyResults: List<QuarterlyResultItemDto> = emptyList(),
+    @SerializedName("corporate_events") val corporateEvents: List<CorporateEventItemDto> = emptyList(),
+    @SerializedName("economic_events") val economicEvents: List<EconomicEventItemDto> = emptyList()
+)
+
 
 

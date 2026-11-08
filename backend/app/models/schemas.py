@@ -299,3 +299,144 @@ class ChartDataResponse(BaseModel):
     session_label: str = "Official Close"
     last_close_time: Optional[str] = None
 
+class MarketMoverItem(BaseModel):
+    symbol: str
+    name: str
+    spot_price: float
+    change: float
+    change_percent: float
+    exchange: str = "NSE"
+    is_positive: bool = True
+    volume: Optional[int] = 0
+    volume_str: Optional[str] = "0"
+    turnover_cr: Optional[float] = 0.0
+    turnover_str: Optional[str] = "₹0 Cr"
+
+class GainersLosersResponse(BaseModel):
+    exchange: str = "NSE"
+    timestamp: str
+    gainers: List[MarketMoverItem] = []
+    losers: List[MarketMoverItem] = []
+    most_active_volume: List[MarketMoverItem] = []
+    most_active_value: List[MarketMoverItem] = []
+
+class CorporateActionItem(BaseModel):
+    id: str
+    symbol: str
+    company_name: str
+    action_type: str # "DIVIDEND", "SPLIT", "BONUS", "RIGHTS", "AGM", "BUYBACK"
+    ex_date: str
+    record_date: str
+    details: str
+    amount: Optional[float] = None
+    ratio: Optional[str] = None
+    impact: str = "Neutral"
+
+class CorporateActionsResponse(BaseModel):
+    symbol: Optional[str] = None
+    total_actions: int
+    actions: List[CorporateActionItem]
+
+class PeerStockMetrics(BaseModel):
+    symbol: str
+    name: str
+    cmp: float
+    change_pct: float
+    pe_ratio: float
+    pb_ratio: float
+    market_cap_cr: float
+    market_cap_str: str
+    roe: float
+    roce: float
+    dividend_yield: float
+    net_profit_margin: float
+    high_52w: float
+    low_52w: float
+    is_target_stock: bool = False
+
+class PeerComparisonResponse(BaseModel):
+    symbol: str
+    company_name: str
+    sector: str
+    industry: str
+    peers: List[PeerStockMetrics]
+
+class MovingAverageItem(BaseModel):
+    period: int
+    sma_value: float
+    sma_call: str # "BUY" or "SELL"
+    ema_value: float
+    ema_call: str # "BUY" or "SELL"
+
+class OscillatorItem(BaseModel):
+    name: str
+    value: float
+    signal: str # "BUY", "SELL", "NEUTRAL", "OVERBOUGHT", "OVERSOLD"
+    interpretation: str
+
+class PivotPointLevel(BaseModel):
+    name: str
+    p: float
+    s1: float
+    s2: float
+    s3: float
+    r1: float
+    r2: float
+    r3: float
+    s4: Optional[float] = None
+    r4: Optional[float] = None
+
+class DetailedTechnicalAnalysisResponse(BaseModel):
+    symbol: str
+    spot_price: float
+    change: float
+    change_pct: float
+    overall_call: str # "STRONG BUY", "BUY", "NEUTRAL", "SELL", "STRONG SELL"
+    technical_score: float # -100 to +100
+    bullish_count: int
+    bearish_count: int
+    neutral_count: int
+    moving_averages: List[MovingAverageItem]
+    oscillators: List[OscillatorItem]
+    pivot_points: Dict[str, PivotPointLevel]
+    summary_rationale: str
+
+class QuarterlyResultItem(BaseModel):
+    id: str
+    symbol: str
+    company_name: str
+    result_date: str
+    quarter: str
+    revenue_actual_cr: Optional[float] = None
+    revenue_estimate_cr: Optional[float] = None
+    pat_actual_cr: Optional[float] = None
+    pat_estimate_cr: Optional[float] = None
+    yoy_growth_pct: Optional[float] = None
+    status: str # "UPCOMING", "DECLARED"
+    purpose: str = "Financial Results"
+
+class CorporateEventItem(BaseModel):
+    id: str
+    symbol: str
+    company_name: str
+    event_date: str
+    category: str # "RESULTS", "DIVIDEND", "BONUS/SPLIT", "FUND_RAISING", "AGM"
+    title: str
+    description: str
+
+class EconomicEventItem(BaseModel):
+    event_id: str
+    title: str
+    date: str
+    impact_level: str # "HIGH", "MEDIUM", "LOW"
+    forecast: Optional[str] = None
+    previous: Optional[str] = None
+    actual: Optional[str] = None
+    sector_impact: str
+
+class ResultsAndEventsResponse(BaseModel):
+    symbol: Optional[str] = None
+    quarterly_results: List[QuarterlyResultItem] = []
+    corporate_events: List[CorporateEventItem] = []
+    economic_events: List[EconomicEventItem] = []
+

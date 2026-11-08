@@ -94,3 +94,4 @@ def get_market_status(symbol: str = "NIFTY") -> Dict[str, Any]:
         "next_session": f"Next Session: {next_open}",
         "last_close_time": now_ist.strftime("%d-%b-%Y 03:30 PM IST")
     }
+

@@ -4,6 +4,16 @@ from app.services.market_data_fetcher import MarketDataFetcher
 from app.services.technical_analysis import TechnicalAnalysisEngine
 from app.services.securities_master import SecuritiesMaster
 from app.services.market_movers_service import MarketMoversService
+from app.services.corporate_actions_service import CorporateActionsService
+from app.services.peer_comparison_service import PeerComparisonService
+from app.services.detailed_technical_service import DetailedTechnicalService
+from app.services.results_events_service import ResultsAndEventsService
+from app.models.schemas import (
+    CorporateActionsResponse,
+    PeerComparisonResponse,
+    DetailedTechnicalAnalysisResponse,
+    ResultsAndEventsResponse
+)
 
 router = APIRouter(prefix="/market", tags=["Market Data"])
 
@@ -439,3 +449,42 @@ async def get_quote_and_technicals(symbol: str) -> Dict[str, Any]:
 async def get_daily_market_news() -> Dict[str, Any]:
     from app.services.market_news_service import MarketNewsService
     return MarketNewsService.get_daily_briefing()
+
+@router.get("/corporate-actions", response_model=CorporateActionsResponse)
+async def get_corporate_actions(
+    symbol: Optional[str] = Query(None, description="Filter by stock symbol (e.g. RELIANCE, TCS, or ALL)"),
+    action_type: Optional[str] = Query("ALL", description="Filter by action type (DIVIDEND, SPLIT, BONUS, RIGHTS, AGM, ALL)"),
+    limit: int = Query(50, ge=1, le=100)
+) -> CorporateActionsResponse:
+    """
+    Returns upcoming and historical corporate actions (Dividends, Splits, Bonus, Rights, AGMs).
+    """
+    return CorporateActionsService.get_corporate_actions(symbol=symbol, action_type=action_type, limit=limit)
+
+@router.get("/peer-comparison", response_model=PeerComparisonResponse)
+async def get_peer_comparison(
+    symbol: str = Query("RELIANCE", description="Symbol to benchmark against industry peers")
+) -> PeerComparisonResponse:
+    """
+    Returns sector and industry peer comparisons with CMP, P/E, P/B, MCap, ROE, ROCE, Div Yield.
+    """
+    return PeerComparisonService.get_peer_comparison(symbol=symbol)
+
+@router.get("/detailed-technicals", response_model=DetailedTechnicalAnalysisResponse)
+async def get_detailed_technicals(
+    symbol: str = Query("RELIANCE", description="Symbol for comprehensive technical scorecard")
+) -> DetailedTechnicalAnalysisResponse:
+    """
+    Returns complete technical scorecard: Moving Averages (5-200), Oscillators (RSI, MACD, etc.), and Pivot Points.
+    """
+    return DetailedTechnicalService.get_detailed_technicals(symbol=symbol)
+
+@router.get("/results-events", response_model=ResultsAndEventsResponse)
+async def get_results_and_events(
+    symbol: Optional[str] = Query(None, description="Optional symbol filter for results & events")
+) -> ResultsAndEventsResponse:
+    """
+    Returns quarterly financial results calendar, corporate board meetings, and macroeconomic events.
+    """
+    return ResultsAndEventsService.get_results_and_events(symbol=symbol)
+
