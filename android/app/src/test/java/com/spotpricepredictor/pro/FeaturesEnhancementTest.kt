@@ -128,3 +128,4 @@ class FeaturesEnhancementTest {
         assertTrue(newsItem.likelyImpact.length > 20)
     }
 }
+

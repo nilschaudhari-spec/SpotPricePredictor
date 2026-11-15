@@ -23,6 +23,13 @@ import com.spotpricepredictor.pro.domain.model.PatternDetectionItem
 import com.spotpricepredictor.pro.domain.model.OptionChainData
 import com.spotpricepredictor.pro.domain.model.MarketNewsBriefing
 import com.spotpricepredictor.pro.domain.model.MarketNewsItem
+import com.spotpricepredictor.pro.domain.model.AutoTradeSettings
+import com.spotpricepredictor.pro.domain.model.AutoTradeOrder
+import com.spotpricepredictor.pro.domain.model.VirtualPortfolio
+import com.spotpricepredictor.pro.domain.model.VirtualPosition
+import com.spotpricepredictor.pro.domain.model.ScanAndExecuteResponse
+import com.spotpricepredictor.pro.domain.model.ManualOrderRequest
+import com.spotpricepredictor.pro.domain.model.SquareOffRequest
 import com.spotpricepredictor.pro.domain.repository.MarketRepository
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetGainersLosersUseCase
@@ -134,6 +141,16 @@ class PredictorViewModel @Inject constructor(
     val is1msStreamingActive = MutableStateFlow(false)
     val tickCounter = MutableStateFlow(0L)
 
+    // Auto-Trading & FrontPage Virtual Trading Engine
+    val autoTradeSettings = MutableStateFlow(AutoTradeSettings())
+    val virtualPortfolio = MutableStateFlow<VirtualPortfolio?>(null)
+    val isAutoTradeScanning = MutableStateFlow(false)
+    val showAutoTradeModal = MutableStateFlow(false)
+    val brokerTestMessage = MutableStateFlow<String?>(null)
+    val isTestingBroker = MutableStateFlow(false)
+    val lastScanResult = MutableStateFlow<ScanAndExecuteResponse?>(null)
+    private var autoScanJob: Job? = null
+
     // Script Categories
     val selectedCategory = MutableStateFlow("ALL") // ALL, INDICES, COMMODITIES, BANKING, IT, AUTO, ENERGY, FMCG, METALS, CUSTOM
     val categorySymbols = MutableStateFlow<List<String>>(emptyList())
@@ -170,6 +187,9 @@ class PredictorViewModel @Inject constructor(
         fetchProStrategies("NIFTY")
         fetchOptionChain("NIFTY")
         fetchMarketNews()
+        fetchAutoTradeSettings()
+        fetchVirtualPortfolio()
+        startAutoTradeBackgroundScanner()
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
             start1msHighFrequencyTicker()
@@ -512,6 +532,42 @@ class PredictorViewModel @Inject constructor(
                         strikes = updatedStrikes
                     )
                 }
+
+                // Dynamically update virtual portfolio position MTM and net unrealized P&L
+                val currentPort = virtualPortfolio.value
+                if (currentPort != null && currentPort.positions.any { it.status == "OPEN" } && tickIdx % 50L == 0L) {
+                    var totalUnrealized = 0.0
+                    val updatedPositions = currentPort.positions.map { pos ->
+                        if (pos.status == "OPEN") {
+                            val posPrice = if (pos.symbol.equals(currentSym, ignoreCase = true)) {
+                                newPrice
+                            } else {
+                                pos.currentPrice + (rng.nextDouble() - 0.5) * (pos.currentPrice * 0.0002)
+                            }
+                            val roundedPrice = Math.round(posPrice * 100.0) / 100.0
+                            val diff = if (pos.action.equals("BUY", ignoreCase = true)) {
+                                roundedPrice - pos.avgPrice
+                            } else {
+                                pos.avgPrice - roundedPrice
+                            }
+                            val pnl = Math.round((diff * pos.quantity) * 100.0) / 100.0
+                            val pnlPct = if (pos.avgPrice > 0) Math.round(((diff / pos.avgPrice) * 100.0) * 100.0) / 100.0 else 0.0
+                            totalUnrealized += pnl
+                            pos.copy(
+                                currentPrice = roundedPrice,
+                                pnl = pnl,
+                                pnlPercent = pnlPct
+                            )
+                        } else {
+                            pos
+                        }
+                    }
+                    val roundedTotalUnrealized = Math.round(totalUnrealized * 100.0) / 100.0
+                    virtualPortfolio.value = currentPort.copy(
+                        positions = updatedPositions,
+                        unrealizedPnl = roundedTotalUnrealized
+                    )
+                }
             }
         }
     }
@@ -811,9 +867,173 @@ class PredictorViewModel @Inject constructor(
         selectedNewsItemForDetail.value = null
     }
 
+    // Auto-Trading & FrontPage Terminal Methods
+    fun openAutoTradeModal() {
+        showAutoTradeModal.value = true
+        fetchVirtualPortfolio()
+        fetchAutoTradeSettings()
+    }
+
+    fun closeAutoTradeModal() {
+        showAutoTradeModal.value = false
+    }
+
+    fun fetchAutoTradeSettings() {
+        viewModelScope.launch {
+            marketRepository.getAutoTradeSettings().fold(
+                onSuccess = { settings ->
+                    autoTradeSettings.value = settings
+                },
+                onFailure = { /* keep default */ }
+            )
+        }
+    }
+
+    fun updateAutoTradeSettings(settings: AutoTradeSettings) {
+        autoTradeSettings.value = settings
+        viewModelScope.launch {
+            marketRepository.updateAutoTradeSettings(settings).fold(
+                onSuccess = { updated ->
+                    autoTradeSettings.value = updated
+                },
+                onFailure = { /* fallback */ }
+            )
+        }
+    }
+
+    fun fetchVirtualPortfolio() {
+        viewModelScope.launch {
+            marketRepository.getVirtualPortfolio().fold(
+                onSuccess = { portfolio ->
+                    virtualPortfolio.value = portfolio
+                },
+                onFailure = { /* fallback */ }
+            )
+        }
+    }
+
+    fun scanAllStocksAndAutoTrade(forceExecute: Boolean = true) {
+        viewModelScope.launch {
+            isAutoTradeScanning.value = true
+            marketRepository.scanAllStocksAndExecute(forceExecute = forceExecute).fold(
+                onSuccess = { response ->
+                    lastScanResult.value = response
+                    virtualPortfolio.value = response.portfolio
+                    isAutoTradeScanning.value = false
+                },
+                onFailure = {
+                    isAutoTradeScanning.value = false
+                }
+            )
+        }
+    }
+
+    fun placeManualAutoTrade(pattern: PatternDetectionItem) {
+        val qty = if (pattern.triggerPrice > 0) {
+            maxOf(1, (autoTradeSettings.value.maxCapitalPerTrade / pattern.triggerPrice).toInt())
+        } else 50
+        val req = ManualOrderRequest(
+            symbol = pattern.symbol,
+            action = pattern.patternType.uppercase(),
+            quantity = qty,
+            price = pattern.triggerPrice,
+            stopLoss = pattern.stopLoss,
+            targetPrice = pattern.target1,
+            patternTrigger = "${pattern.patternName} (${pattern.reliabilityPct}%)"
+        )
+        viewModelScope.launch {
+            marketRepository.placeManualOrder(req).fold(
+                onSuccess = {
+                    fetchVirtualPortfolio()
+                },
+                onFailure = { /* handled */ }
+            )
+        }
+    }
+
+    fun placeManualTrade(
+        symbol: String,
+        action: String,
+        quantity: Int? = null,
+        price: Double? = null,
+        stopLoss: Double? = null,
+        targetPrice: Double? = null,
+        trigger: String = "Manual Pro Order"
+    ) {
+        val req = ManualOrderRequest(
+            symbol = symbol,
+            action = action,
+            quantity = quantity,
+            price = price,
+            stopLoss = stopLoss,
+            targetPrice = targetPrice,
+            patternTrigger = trigger
+        )
+        viewModelScope.launch {
+            marketRepository.placeManualOrder(req).fold(
+                onSuccess = {
+                    fetchVirtualPortfolio()
+                },
+                onFailure = { /* handled */ }
+            )
+        }
+    }
+
+    fun squareOffPosition(positionId: String) {
+        viewModelScope.launch {
+            marketRepository.squareOffPositions(positionId).fold(
+                onSuccess = { updated ->
+                    virtualPortfolio.value = updated
+                },
+                onFailure = { /* handled */ }
+            )
+        }
+    }
+
+    fun squareOffAllPositions() {
+        viewModelScope.launch {
+            marketRepository.squareOffPositions(null).fold(
+                onSuccess = { updated ->
+                    virtualPortfolio.value = updated
+                },
+                onFailure = { /* handled */ }
+            )
+        }
+    }
+
+    fun testBrokerConnection() {
+        viewModelScope.launch {
+            isTestingBroker.value = true
+            brokerTestMessage.value = "Testing broker integration..."
+            marketRepository.testBrokerConnection().fold(
+                onSuccess = { msg ->
+                    brokerTestMessage.value = msg
+                    isTestingBroker.value = false
+                },
+                onFailure = { err ->
+                    brokerTestMessage.value = "Connection check: ${err.message ?: "Failed"}"
+                    isTestingBroker.value = false
+                }
+            )
+        }
+    }
+
+    private fun startAutoTradeBackgroundScanner() {
+        autoScanJob?.cancel()
+        autoScanJob = viewModelScope.launch(Dispatchers.Default) {
+            while (isActive) {
+                delay(15000L) // 15s interval
+                if (autoTradeSettings.value.isAutoTradeEnabled) {
+                    scanAllStocksAndAutoTrade(forceExecute = true)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         pollingJob?.cancel()
         highFreqTickerJob?.cancel()
+        autoScanJob?.cancel()
     }
 }

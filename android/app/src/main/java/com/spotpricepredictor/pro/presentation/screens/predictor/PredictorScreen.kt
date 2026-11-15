@@ -53,6 +53,7 @@ import com.spotpricepredictor.pro.presentation.components.ProStrategiesDialog
 import com.spotpricepredictor.pro.presentation.components.OptionsHubDialog
 import com.spotpricepredictor.pro.presentation.components.NewsDetailDialog
 import com.spotpricepredictor.pro.presentation.components.MarketNewsBriefingDialog
+import com.spotpricepredictor.pro.presentation.components.AutoTradeHubDialog
 import com.spotpricepredictor.pro.presentation.components.ServerSettingsDialog
 import com.spotpricepredictor.pro.presentation.theme.*
 
@@ -123,6 +124,12 @@ fun PredictorScreen(
     val isNewsLoading by viewModel.isNewsLoading.collectAsState()
     val showNewsBriefingModal by viewModel.showNewsBriefingModal.collectAsState()
     val selectedNewsItemForDetail by viewModel.selectedNewsItemForDetail.collectAsState()
+
+    val autoTradeSettings by viewModel.autoTradeSettings.collectAsState()
+    val virtualPortfolio by viewModel.virtualPortfolio.collectAsState()
+    val isAutoTradeScanning by viewModel.isAutoTradeScanning.collectAsState()
+    val showAutoTradeModal by viewModel.showAutoTradeModal.collectAsState()
+    val brokerTestMessage by viewModel.brokerTestMessage.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -247,6 +254,7 @@ fun PredictorScreen(
             onTypeFilterSelected = { viewModel.setPatternTypeFilter(it) },
             onNameFilterSelected = { viewModel.setPatternNameFilter(it) },
             onStockSelected = { viewModel.onSymbolSelected(it) },
+            onAutoExecuteTrade = { pattern -> viewModel.placeManualAutoTrade(pattern) },
             onDismiss = { viewModel.closePatternsModal() }
         )
     }
@@ -293,6 +301,35 @@ fun PredictorScreen(
                 viewModel.closeNewsDetail()
                 viewModel.onSymbolSelected(sym)
             }
+        )
+    }
+
+    if (showAutoTradeModal) {
+        AutoTradeHubDialog(
+            settings = autoTradeSettings,
+            portfolio = virtualPortfolio ?: com.spotpricepredictor.pro.domain.model.VirtualPortfolio(),
+            isScanning = isAutoTradeScanning,
+            onToggleAutoTrade = { isEnabled ->
+                viewModel.updateAutoTradeSettings(autoTradeSettings.copy(isAutoTradeEnabled = isEnabled))
+            },
+            onUpdateSettings = { newSettings ->
+                viewModel.updateAutoTradeSettings(newSettings)
+            },
+            onScanAndExecute = {
+                viewModel.scanAllStocksAndAutoTrade(forceExecute = true)
+            },
+            onSquareOff = { positionId ->
+                if (positionId == null) {
+                    viewModel.squareOffAllPositions()
+                } else {
+                    viewModel.squareOffPosition(positionId)
+                }
+            },
+            onTestBroker = {
+                viewModel.testBrokerConnection()
+            },
+            brokerTestMessage = brokerTestMessage,
+            onDismiss = { viewModel.closeAutoTradeModal() }
         )
     }
 
@@ -1197,6 +1234,98 @@ fun PredictorScreen(
                                 color = TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 9. Auto-Trading & FrontPage Terminal
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.openAutoTradeModal() },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    border = BorderStroke(1.dp, if (autoTradeSettings.isAutoTradeEnabled) NeonEmerald.copy(alpha = 0.8f) else CardBorder)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = "🤖 Auto-Trading Engine",
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = ElectricCyan
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            if (autoTradeSettings.isAutoTradeEnabled) NeonEmerald.copy(alpha = 0.2f) else SurfaceDark,
+                                            RoundedCornerShape(3.dp)
+                                        )
+                                        .border(
+                                            0.7.dp,
+                                            if (autoTradeSettings.isAutoTradeEnabled) NeonEmerald else CardBorder,
+                                            RoundedCornerShape(3.dp)
+                                        )
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = if (autoTradeSettings.isAutoTradeEnabled) "ACTIVE" else "OFFLINE",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (autoTradeSettings.isAutoTradeEnabled) NeonEmerald else TextSecondary
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .background(RoyalViolet.copy(alpha = 0.2f), RoundedCornerShape(3.dp))
+                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = autoTradeSettings.brokerDestination.label.take(16),
+                                        fontSize = 7.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RoyalViolet
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            val openCount = virtualPortfolio?.positions?.count { it.status == "OPEN" } ?: 0
+                            val unPnl = virtualPortfolio?.unrealizedPnl ?: 0.0
+                            val isPnlPos = unPnl >= 0.0
+                            Text(
+                                text = "Open: $openCount positions • MTM: ₹${"%,.2f".format(unPnl)}",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isPnlPos) NeonEmerald else CrimsonAlert
+                            )
+                            Text(
+                                text = "FrontPage & In-App Demo • Auto-executes on pattern triggers",
+                                fontSize = 8.sp,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                .border(0.8.dp, ElectricCyan.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "OPEN HUB ↗",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = ElectricCyan
                             )
                         }
                     }

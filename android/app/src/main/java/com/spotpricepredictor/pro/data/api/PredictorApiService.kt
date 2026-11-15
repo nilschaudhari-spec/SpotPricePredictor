@@ -21,6 +21,13 @@ import com.spotpricepredictor.pro.data.api.models.PeerComparisonResponseDto
 import com.spotpricepredictor.pro.data.api.models.ResultsAndEventsResponseDto
 import com.spotpricepredictor.pro.data.api.models.TradeSuggestionsResponseDto
 import com.spotpricepredictor.pro.data.api.models.ProStrategiesResponseDto
+import com.spotpricepredictor.pro.data.api.models.AutoTradeSettingsDto
+import com.spotpricepredictor.pro.data.api.models.AutoTradeOrderDto
+import com.spotpricepredictor.pro.data.api.models.VirtualPortfolioDto
+import com.spotpricepredictor.pro.data.api.models.ScanAndExecuteResponseDto
+import com.spotpricepredictor.pro.data.api.models.ManualOrderRequestDto
+import com.spotpricepredictor.pro.data.api.models.SquareOffRequestDto
+import com.spotpricepredictor.pro.data.api.models.BrokerTestResponseDto
 
 interface PredictorApiService {
 
@@ -100,6 +107,35 @@ interface PredictorApiService {
     suspend fun getProStrategies(
         @Query("symbol") symbol: String = "NIFTY"
     ): Response<ProStrategiesResponseDto>
+
+    @GET("api/v1/auto-trade/settings")
+    suspend fun getAutoTradeSettings(): Response<AutoTradeSettingsDto>
+
+    @POST("api/v1/auto-trade/settings")
+    suspend fun updateAutoTradeSettings(
+        @Body settings: AutoTradeSettingsDto
+    ): Response<AutoTradeSettingsDto>
+
+    @GET("api/v1/auto-trade/portfolio")
+    suspend fun getVirtualPortfolio(): Response<VirtualPortfolioDto>
+
+    @POST("api/v1/auto-trade/scan-and-execute")
+    suspend fun scanAllStocksAndExecute(
+        @Query("force_execute") forceExecute: Boolean = true
+    ): Response<ScanAndExecuteResponseDto>
+
+    @POST("api/v1/auto-trade/order")
+    suspend fun placeManualOrder(
+        @Body req: ManualOrderRequestDto
+    ): Response<AutoTradeOrderDto>
+
+    @POST("api/v1/auto-trade/square-off")
+    suspend fun squareOffPositions(
+        @Body req: SquareOffRequestDto
+    ): Response<VirtualPortfolioDto>
+
+    @POST("api/v1/auto-trade/test-broker")
+    suspend fun testBrokerConnection(): Response<BrokerTestResponseDto>
 }
 
 

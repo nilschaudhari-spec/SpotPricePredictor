@@ -6,6 +6,11 @@ import com.spotpricepredictor.pro.domain.model.OptionChainData
 import com.spotpricepredictor.pro.domain.model.PredictionHorizon
 import com.spotpricepredictor.pro.domain.model.PredictionResult
 import com.spotpricepredictor.pro.domain.model.TrendDirection
+import com.spotpricepredictor.pro.domain.model.AutoTradeSettings
+import com.spotpricepredictor.pro.domain.model.AutoTradeOrder
+import com.spotpricepredictor.pro.domain.model.VirtualPortfolio
+import com.spotpricepredictor.pro.domain.model.ScanAndExecuteResponse
+import com.spotpricepredictor.pro.domain.model.ManualOrderRequest
 import kotlinx.coroutines.flow.Flow
 
 interface MarketRepository {
@@ -82,5 +87,19 @@ interface MarketRepository {
     suspend fun getProStrategies(
         symbol: String = "NIFTY"
     ): Result<com.spotpricepredictor.pro.domain.model.ProStrategiesData>
+
+    suspend fun getAutoTradeSettings(): Result<AutoTradeSettings>
+
+    suspend fun updateAutoTradeSettings(settings: AutoTradeSettings): Result<AutoTradeSettings>
+
+    suspend fun getVirtualPortfolio(): Result<VirtualPortfolio>
+
+    suspend fun scanAllStocksAndExecute(forceExecute: Boolean = true): Result<ScanAndExecuteResponse>
+
+    suspend fun placeManualOrder(req: ManualOrderRequest): Result<AutoTradeOrder>
+
+    suspend fun squareOffPositions(positionId: String? = null): Result<VirtualPortfolio>
+
+    suspend fun testBrokerConnection(): Result<String>
 }
 

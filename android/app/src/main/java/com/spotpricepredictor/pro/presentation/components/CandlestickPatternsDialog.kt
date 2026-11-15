@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,6 +38,7 @@ fun CandlestickPatternsDialog(
     onTypeFilterSelected: (String) -> Unit,
     onNameFilterSelected: (String) -> Unit,
     onStockSelected: (String) -> Unit,
+    onAutoExecuteTrade: ((PatternDetectionItem) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -259,7 +260,8 @@ fun CandlestickPatternsDialog(
                                     onSelectStock = {
                                         onStockSelected(pattern.symbol)
                                         onDismiss()
-                                    }
+                                    },
+                                    onAutoExecuteTrade = onAutoExecuteTrade
                                 )
                             }
                         }
@@ -273,7 +275,8 @@ fun CandlestickPatternsDialog(
 @Composable
 fun PatternCard(
     pattern: PatternDetectionItem,
-    onSelectStock: () -> Unit
+    onSelectStock: () -> Unit,
+    onAutoExecuteTrade: ((PatternDetectionItem) -> Unit)? = null
 ) {
     val isBuy = pattern.patternType.uppercase() == "BUY"
     val isPriceAction = pattern.category.contains("PRICE ACTION", ignoreCase = true)
@@ -458,24 +461,55 @@ fun PatternCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Action Button: Select and Analyze this Stock
-            Button(
-                onClick = onSelectStock,
-                modifier = Modifier.fillMaxWidth().height(34.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isBuy) NeonEmerald.copy(alpha = 0.22f) else CrimsonAlert.copy(alpha = 0.22f)
-                ),
-                border = BorderStroke(1.dp, biasColor),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(vertical = 4.dp)
+            var isOrderSent by remember { mutableStateOf(false) }
+
+            // Action Buttons: Predict Setup & Auto-Execute Trade
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "⚡ PREDICT & TRADE ${pattern.symbol} SETUP",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = biasColor,
-                    letterSpacing = 0.5.sp
-                )
+                Button(
+                    onClick = onSelectStock,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isBuy) NeonEmerald.copy(alpha = 0.22f) else CrimsonAlert.copy(alpha = 0.22f)
+                    ),
+                    border = BorderStroke(1.dp, biasColor),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "⚡ PREDICT SETUP",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = biasColor,
+                        letterSpacing = 0.4.sp
+                    )
+                }
+
+                if (onAutoExecuteTrade != null) {
+                    Button(
+                        onClick = {
+                            isOrderSent = true
+                            onAutoExecuteTrade(pattern)
+                        },
+                        modifier = Modifier.weight(1.1f).height(34.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isOrderSent) NeonEmerald.copy(alpha = 0.35f) else ElectricCyan.copy(alpha = 0.22f)
+                        ),
+                        border = BorderStroke(1.dp, if (isOrderSent) NeonEmerald else ElectricCyan),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (isOrderSent) "✓ AUTO-ORDER SENT" else "🤖 AUTO-ORDER (FP)",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isOrderSent) NeonEmerald else ElectricCyan,
+                            letterSpacing = 0.4.sp
+                        )
+                    }
+                }
             }
         }
     }

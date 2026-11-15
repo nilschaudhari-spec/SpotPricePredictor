@@ -566,5 +566,98 @@ class ProStrategiesResponse(BaseModel):
     hedging_strategies: List[HedgingStrategyItem] = []
     terminologies: List[OptionTerminologyItem] = []
 
+# =============================================================================
+# FRONTPAGE & DEMO TRADING AUTO-EXECUTION ENGINE SCHEMAS
+# =============================================================================
+
+class AutoTradeSettings(BaseModel):
+    is_auto_trade_enabled: bool = False
+    broker_destination: str = "FRONTPAGE"  # "FRONTPAGE", "IN_APP_PAPER", "TRADINGVIEW_WEBHOOK", "SENSIBULL_VIRTUAL"
+    frontpage_user_token: Optional[str] = ""
+    frontpage_account_id: Optional[str] = "FP_VIRTUAL_01"
+    webhook_url: Optional[str] = ""
+    scan_interval_seconds: int = 15
+    min_reliability_pct: float = 80.0
+    allowed_actions: str = "ALL"  # "ALL", "BUY_ONLY", "SELL_ONLY"
+    max_capital_per_trade: float = 50000.0
+    max_concurrent_positions: int = 5
+    auto_trailing_stop_loss: bool = True
+    notify_on_execution: bool = True
+
+class AutoTradeOrder(BaseModel):
+    order_id: str
+    symbol: str
+    company_name: str
+    exchange: str = "NSE"
+    action: str  # "BUY", "SELL"
+    product_type: str = "INTRADAY"  # "INTRADAY", "DELIVERY", "FNO"
+    pattern_trigger: str
+    order_price: float
+    quantity: int
+    total_value: float
+    stop_loss: float
+    target_price: float
+    status: str = "EXECUTED"  # "PENDING", "EXECUTED", "REJECTED", "CANCELLED"
+    broker: str = "FrontPage"
+    broker_order_id: str
+    timestamp: str
+    execution_message: str
+
+class VirtualPosition(BaseModel):
+    position_id: str
+    order_id: str
+    symbol: str
+    company_name: str
+    action: str  # "BUY", "SELL"
+    quantity: int
+    avg_price: float
+    current_price: float
+    stop_loss: float
+    target_price: float
+    pnl: float
+    pnl_percent: float
+    pattern_trigger: str
+    broker: str = "FrontPage"
+    status: str = "OPEN"  # "OPEN", "CLOSED_TARGET", "CLOSED_SL", "MANUALLY_CLOSED"
+    entry_time: str
+    exit_time: Optional[str] = None
+    exit_price: Optional[float] = None
+
+class VirtualPortfolio(BaseModel):
+    total_capital: float = 1000000.0
+    available_margin: float = 1000000.0
+    used_margin: float = 0.0
+    unrealized_pnl: float = 0.0
+    realized_pnl: float = 0.0
+    total_trades: int = 0
+    winning_trades: int = 0
+    losing_trades: int = 0
+    win_rate_pct: float = 0.0
+    broker_name: str = "FrontPage Virtual Account"
+    positions: List[VirtualPosition] = []
+    order_history: List[AutoTradeOrder] = []
+
+class ScanAndExecuteResponse(BaseModel):
+    stocks_scanned_count: int
+    patterns_detected_count: int
+    orders_executed: List[AutoTradeOrder] = []
+    portfolio: VirtualPortfolio
+    summary: str
+    timestamp: str
+
+class ManualOrderRequest(BaseModel):
+    symbol: str
+    action: str  # "BUY" or "SELL"
+    quantity: Optional[int] = None
+    product_type: str = "INTRADAY"
+    price: Optional[float] = None
+    stop_loss: Optional[float] = None
+    target_price: Optional[float] = None
+    pattern_trigger: str = "Manual User Order"
+
+class SquareOffRequest(BaseModel):
+    position_id: Optional[str] = None  # None or "ALL" closes all open positions
+
+
 
 
