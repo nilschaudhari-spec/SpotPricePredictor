@@ -36,16 +36,18 @@ import com.spotpricepredictor.pro.presentation.theme.*
 fun AutoTradeHubDialog(
     settings: AutoTradeSettings,
     portfolio: VirtualPortfolio,
+    strategyConditions: List<StrategyConditionItem> = emptyList(),
     isScanning: Boolean,
     onToggleAutoTrade: (Boolean) -> Unit,
     onUpdateSettings: (AutoTradeSettings) -> Unit,
     onScanAndExecute: () -> Unit,
     onSquareOff: (String?) -> Unit,
     onTestBroker: () -> Unit,
+    onExecuteStrategy: (StrategyConditionItem) -> Unit = {},
     brokerTestMessage: String?,
     onDismiss: () -> Unit
 ) {
-    var selectedTab by remember { mutableStateOf("POSITIONS") } // "POSITIONS", "SCANNER", "SETTINGS"
+    var selectedTab by remember { mutableStateOf("POSITIONS") } // "POSITIONS", "STRATEGIES", "SCANNER", "SETTINGS"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -79,7 +81,7 @@ fun AutoTradeHubDialog(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    text = "🤖 AUTO-TRADING & FRONTPAGE HUB",
+                                    text = "🤖 AUTO PAPER TRADING HUB",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = ElectricCyan,
@@ -107,8 +109,8 @@ fun AutoTradeHubDialog(
                                 }
                             }
                             Text(
-                                text = "${settings.brokerDestination.label} • Auto Buy/Sell on Pattern Detection",
-                                fontSize = 10.sp,
+                                text = "anvest.in/paper-trading • front.page • Trades on Strategy Conditions",
+                                fontSize = 9.5.sp,
                                 color = TextSecondary
                             )
                         }
@@ -199,15 +201,18 @@ fun AutoTradeHubDialog(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 3. Navigation Tabs: POSITIONS, SCANNER, SETTINGS
+                    // 3. Navigation Tabs: POSITIONS, STRATEGIES, SCANNER, SETTINGS
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        val metCount = strategyConditions.count { it.conditionMet }
+                        val openCount = portfolio.positions.count { it.status == "OPEN" }
                         val tabs = listOf(
-                            "POSITIONS" to "Positions (${portfolio.positions.count { it.status == "OPEN" }})",
-                            "SCANNER" to "⚡ Multi-Stock Scanner",
-                            "SETTINGS" to "⚙️ Broker Settings"
+                            "POSITIONS" to "Positions ($openCount)",
+                            "STRATEGIES" to "Strategies ($metCount Met)",
+                            "SCANNER" to "Scanner",
+                            "SETTINGS" to "Brokers"
                         )
 
                         tabs.forEach { (key, label) ->
@@ -230,7 +235,7 @@ fun AutoTradeHubDialog(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 9.sp,
+                                    fontSize = 8.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isSel) ElectricCyan else TextSecondary,
                                     maxLines = 1,
@@ -247,6 +252,11 @@ fun AutoTradeHubDialog(
                         "POSITIONS" -> PositionsTabContent(
                             portfolio = portfolio,
                             onSquareOff = onSquareOff
+                        )
+                        "STRATEGIES" -> StrategiesTabContent(
+                            conditions = strategyConditions,
+                            settings = settings,
+                            onExecuteStrategy = onExecuteStrategy
                         )
                         "SCANNER" -> ScannerTabContent(
                             settings = settings,
@@ -480,6 +490,247 @@ private fun ClosedPositionCard(pos: VirtualPosition) {
 }
 
 @Composable
+private fun StrategiesTabContent(
+    conditions: List<StrategyConditionItem>,
+    settings: AutoTradeSettings,
+    onExecuteStrategy: (StrategyConditionItem) -> Unit
+) {
+    var filterCategory by remember { mutableStateOf("ALL") } // "ALL", "MET_ONLY", "BUY", "SELL"
+
+    val filtered = when (filterCategory) {
+        "MET_ONLY" -> conditions.filter { it.conditionMet }
+        "BUY" -> conditions.filter { it.action == "BUY" }
+        "SELL" -> conditions.filter { it.action == "SELL" }
+        else -> conditions
+    }
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "STRATEGY CONDITION EVALUATION ENGINE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = ElectricCyan,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "${conditions.count { it.conditionMet }}/${conditions.size} Conditions Met",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NeonEmerald
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Trades trigger automatically on Anvest Paper Trading (anvest.in) or FrontPage (front.page) when conditions are confirmed.",
+                fontSize = 8.5.sp,
+                color = TextSecondary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Filter Chips
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(
+                    "ALL" to "All Setups (${conditions.size})",
+                    "MET_ONLY" to "🟢 Condition Met (${conditions.count { it.conditionMet }})",
+                    "BUY" to "Bullish BUY",
+                    "SELL" to "Bearish SELL"
+                ).forEach { (key, label) ->
+                    val isSel = filterCategory == key
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { filterCategory = key }
+                            .background(if (isSel) ElectricCyan.copy(alpha = 0.2f) else CardBackground, RoundedCornerShape(6.dp))
+                            .border(0.8.dp, if (isSel) ElectricCyan else CardBorder, RoundedCornerShape(6.dp))
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSel) ElectricCyan else TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 30.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No strategy conditions matching filter",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+        } else {
+            items(filtered) { cond ->
+                StrategyConditionCard(
+                    condition = cond,
+                    brokerLabel = settings.brokerDestination.label,
+                    onExecute = { onExecuteStrategy(cond) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StrategyConditionCard(
+    condition: StrategyConditionItem,
+    brokerLabel: String,
+    onExecute: () -> Unit
+) {
+    val isBuy = condition.action == "BUY"
+    val isSell = condition.action == "SELL"
+    val accent = if (isBuy) NeonEmerald else if (isSell) CrimsonAlert else RoyalViolet
+    var isSent by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        border = BorderStroke(1.dp, if (condition.conditionMet) accent.copy(alpha = 0.6f) else CardBorder)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Header Row: Strategy Name & Condition Met Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = condition.strategyName,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "${condition.symbol} • ${condition.companyName} • ${condition.timeframe}",
+                        fontSize = 8.5.sp,
+                        color = TextSecondary
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .background(
+                            if (condition.conditionMet) NeonEmerald.copy(alpha = 0.2f) else SurfaceDark,
+                            RoundedCornerShape(4.dp)
+                        )
+                        .border(
+                            0.8.dp,
+                            if (condition.conditionMet) NeonEmerald else CardBorder,
+                            RoundedCornerShape(4.dp)
+                        )
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = if (condition.conditionMet) "🟢 CONDITION MET" else "⚪ WAITING",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (condition.conditionMet) NeonEmerald else TextSecondary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Trigger Condition Description Box
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(6.dp))
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = "Rule: ${condition.triggerCondition}",
+                    fontSize = 9.sp,
+                    color = ElectricCyan,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Levels Grid: Entry, SL, TGT, R:R, Score
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(text = "ENTRY", fontSize = 7.5.sp, color = TextSecondary)
+                    Text(text = "₹${"%.2f".format(condition.entryPrice)}", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                }
+                Column {
+                    Text(text = "SL", fontSize = 7.5.sp, color = CrimsonAlert)
+                    Text(text = "₹${"%.2f".format(condition.stopLoss)}", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = CrimsonAlert)
+                }
+                Column {
+                    Text(text = "TARGET", fontSize = 7.5.sp, color = NeonEmerald)
+                    Text(text = "₹${"%.2f".format(condition.targetPrice)}", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                }
+                Column {
+                    Text(text = "R:R", fontSize = 7.5.sp, color = TextSecondary)
+                    Text(text = condition.riskReward, fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = RoyalViolet)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(text = "CONFIDENCE", fontSize = 7.5.sp, color = TextSecondary)
+                    Text(text = "${condition.confidenceScore.toInt()}%", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = NeonEmerald)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Action Execute Button
+            Button(
+                onClick = {
+                    isSent = true
+                    onExecute()
+                },
+                modifier = Modifier.fillMaxWidth().height(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSent) NeonEmerald.copy(alpha = 0.3f) else accent.copy(alpha = 0.18f)
+                ),
+                border = BorderStroke(1.dp, if (isSent) NeonEmerald else accent),
+                shape = RoundedCornerShape(6.dp),
+                contentPadding = PaddingValues(vertical = 2.dp)
+            ) {
+                Text(
+                    text = if (isSent) "✓ STRATEGY ORDER SENT TO ${brokerLabel.take(15).uppercase()}" else "⚡ AUTO-TRADE ${condition.action} ON ${brokerLabel.take(15).uppercase()}",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isSent) NeonEmerald else accent,
+                    letterSpacing = 0.3.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ScannerTabContent(
     settings: AutoTradeSettings,
     portfolio: VirtualPortfolio,
@@ -633,18 +884,22 @@ private fun SettingsTabContent(
     brokerTestMessage: String?
 ) {
     var selectedBroker by remember { mutableStateOf(settings.brokerDestination) }
-    var tokenInput by remember { mutableStateOf(settings.frontpageUserToken) }
+    var anvestTokenInput by remember { mutableStateOf(settings.anvestUserToken) }
+    var anvestAccountIdInput by remember { mutableStateOf(settings.anvestAccountId) }
+    var frontpageTokenInput by remember { mutableStateOf(settings.frontpageUserToken) }
+    var frontpageAccountIdInput by remember { mutableStateOf(settings.frontpageAccountId) }
     var webhookInput by remember { mutableStateOf(settings.webhookUrl) }
     var minReliability by remember { mutableStateOf(settings.minReliabilityPct) }
     var maxCapital by remember { mutableStateOf(settings.maxCapitalPerTrade) }
     var maxPositions by remember { mutableStateOf(settings.maxConcurrentPositions) }
+    var enabledStrats by remember { mutableStateOf(settings.enabledStrategies.toSet()) }
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         item {
-            Text(text = "EXECUTION BROKER INTEGRATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ElectricCyan, letterSpacing = 0.5.sp)
+            Text(text = "PAPER TRADING PLATFORM INTEGRATION", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ElectricCyan, letterSpacing = 0.5.sp)
             Spacer(modifier = Modifier.height(6.dp))
 
             // Broker Selector Row
@@ -670,11 +925,12 @@ private fun SettingsTabContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(text = dest.label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isSel) ElectricCyan else TextPrimary)
                         Text(
                             text = when (dest) {
-                                BrokerDestination.FRONTPAGE -> "India's #1 Virtual Trading Platform (FrontPage paper desk)"
+                                BrokerDestination.ANVEST_PAPER -> "Anvest Paper Trading Simulator (https://anvest.in/paper-trading)"
+                                BrokerDestination.FRONTPAGE -> "FrontPage Paper Trading & Trade Lab (https://front.page/)"
                                 BrokerDestination.IN_APP_PAPER -> "High-speed simulated margin engine (₹10 Lakhs)"
                                 BrokerDestination.TRADINGVIEW_WEBHOOK -> "Dispatches webhook alerts for automated execution"
                                 BrokerDestination.SENSIBULL_VIRTUAL -> "Sensibull Options & Futures paper trading desk"
@@ -697,7 +953,77 @@ private fun SettingsTabContent(
             }
         }
 
-        // FrontPage Specific Configuration
+        // Anvest Specific Configuration (https://anvest.in/paper-trading)
+        if (selectedBroker == BrokerDestination.ANVEST_PAPER) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    border = BorderStroke(1.dp, CardBorder)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(text = "ANVEST PAPER TRADING CREDENTIALS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ElectricCyan)
+                        Text(
+                            text = "Platform: https://anvest.in/paper-trading",
+                            fontSize = 8.sp,
+                            color = NeonEmerald,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Enter your Anvest auth token/API session. Leave blank to trade in local high-fidelity simulated Anvest sandbox with ₹10,00,000 capital.",
+                            fontSize = 8.5.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = anvestTokenInput,
+                            onValueChange = {
+                                anvestTokenInput = it
+                                onUpdateSettings(settings.copy(anvestUserToken = it))
+                            },
+                            label = { Text("Anvest Bearer Token / API Key", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        OutlinedTextField(
+                            value = anvestAccountIdInput,
+                            onValueChange = {
+                                anvestAccountIdInput = it
+                                onUpdateSettings(settings.copy(anvestAccountId = it))
+                            },
+                            label = { Text("Anvest Virtual Account ID", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Button(
+                            onClick = onTestBroker,
+                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceDark),
+                            border = BorderStroke(1.dp, ElectricCyan),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(text = "Test Anvest Paper Bridge Connection", fontSize = 10.sp, color = ElectricCyan, fontWeight = FontWeight.Bold)
+                        }
+
+                        if (brokerTestMessage != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(text = brokerTestMessage, fontSize = 9.sp, color = NeonEmerald, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // FrontPage Specific Configuration (https://front.page/)
         if (selectedBroker == BrokerDestination.FRONTPAGE) {
             item {
                 Card(
@@ -707,22 +1033,41 @@ private fun SettingsTabContent(
                     border = BorderStroke(1.dp, CardBorder)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text(text = "FRONTPAGE API CREDENTIALS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ElectricCyan)
+                        Text(text = "FRONTPAGE PAPER TRADING CREDENTIALS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ElectricCyan)
+                        Text(
+                            text = "Platform: https://front.page/",
+                            fontSize = 8.sp,
+                            color = NeonEmerald,
+                            fontWeight = FontWeight.Bold
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Enter your Frontpage account auth token to sync orders directly with frontpage.app cloud. Leave blank to run on simulated FrontPage desk.",
+                            text = "Enter your FrontPage account auth token to sync orders directly with front.page cloud. Leave blank to run on simulated FrontPage desk.",
                             fontSize = 8.5.sp,
                             color = TextSecondary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         OutlinedTextField(
-                            value = tokenInput,
+                            value = frontpageTokenInput,
                             onValueChange = {
-                                tokenInput = it
+                                frontpageTokenInput = it
                                 onUpdateSettings(settings.copy(frontpageUserToken = it))
                             },
                             label = { Text("FrontPage Bearer Token / API Key", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        OutlinedTextField(
+                            value = frontpageAccountIdInput,
+                            onValueChange = {
+                                frontpageAccountIdInput = it
+                                onUpdateSettings(settings.copy(frontpageAccountId = it))
+                            },
+                            label = { Text("FrontPage Virtual Account ID", fontSize = 10.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
@@ -779,6 +1124,64 @@ private fun SettingsTabContent(
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(text = "Send Test Webhook Ping", fontSize = 10.sp, color = ElectricCyan, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Strategy Condition Triggers Section
+        item {
+            Text(text = "STRATEGY CONDITION TRIGGERS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ElectricCyan, letterSpacing = 0.5.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "The app places automated paper trades on Anvest/FrontPage when any enabled strategy condition is confirmed:", fontSize = 8.5.sp, color = TextSecondary)
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                border = BorderStroke(1.dp, CardBorder)
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val availableStrategies = listOf(
+                        "INTRADAY_TRI_CONFIRMATION" to "⚡ 5M Intraday Tri-Confirmation (ST + VWAP + MACD)",
+                        "GOLDEN_CROSS" to "📈 Golden Cross 50/200 EMA & Support Pullback",
+                        "BOLLINGER_BREAKOUT" to "🌊 Bollinger Bands Band-Walking Breakout",
+                        "CONSOLIDATION_BREAKOUT" to "📦 Price Action Consolidation Range Breakout",
+                        "OI_BUILDUP" to "📊 Open Interest (OI) Institutional Matrix",
+                        "CANDLESTICK_PATTERNS" to "🕯️ Candlestick & Price Action Patterns (14 Setups)"
+                    )
+
+                    availableStrategies.forEach { (stratKey, stratLabel) ->
+                        val isEnabled = stratKey in enabledStrats
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val newSet = if (isEnabled) enabledStrats - stratKey else enabledStrats + stratKey
+                                    enabledStrats = newSet
+                                    onUpdateSettings(settings.copy(enabledStrategies = newSet.toList()))
+                                }
+                                .background(if (isEnabled) NeonEmerald.copy(alpha = 0.12f) else SurfaceDark, RoundedCornerShape(6.dp))
+                                .border(0.8.dp, if (isEnabled) NeonEmerald else CardBorder, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stratLabel,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isEnabled) NeonEmerald else TextSecondary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (isEnabled) "✓ ENABLED" else "DISABLED",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isEnabled) NeonEmerald else TextMuted
+                            )
                         }
                     }
                 }

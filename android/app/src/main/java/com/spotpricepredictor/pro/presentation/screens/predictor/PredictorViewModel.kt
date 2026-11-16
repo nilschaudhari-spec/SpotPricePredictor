@@ -30,6 +30,7 @@ import com.spotpricepredictor.pro.domain.model.VirtualPosition
 import com.spotpricepredictor.pro.domain.model.ScanAndExecuteResponse
 import com.spotpricepredictor.pro.domain.model.ManualOrderRequest
 import com.spotpricepredictor.pro.domain.model.SquareOffRequest
+import com.spotpricepredictor.pro.domain.model.StrategyConditionItem
 import com.spotpricepredictor.pro.domain.repository.MarketRepository
 import com.spotpricepredictor.pro.domain.usecase.GetChartDataUseCase
 import com.spotpricepredictor.pro.domain.usecase.GetGainersLosersUseCase
@@ -149,6 +150,8 @@ class PredictorViewModel @Inject constructor(
     val brokerTestMessage = MutableStateFlow<String?>(null)
     val isTestingBroker = MutableStateFlow(false)
     val lastScanResult = MutableStateFlow<ScanAndExecuteResponse?>(null)
+    val strategyConditions = MutableStateFlow<List<StrategyConditionItem>>(emptyList())
+    val isStrategyConditionsLoading = MutableStateFlow(false)
     private var autoScanJob: Job? = null
 
     // Script Categories
@@ -189,6 +192,7 @@ class PredictorViewModel @Inject constructor(
         fetchMarketNews()
         fetchAutoTradeSettings()
         fetchVirtualPortfolio()
+        fetchStrategyConditions("NIFTY")
         startAutoTradeBackgroundScanner()
         startRealtimeQuotePolling()
         if (mStatus.isOpen) {
@@ -311,6 +315,7 @@ class PredictorViewModel @Inject constructor(
         fetchPatterns(clean)
         fetchProStrategies(clean)
         fetchOptionChain(clean)
+        fetchStrategyConditions(clean)
 
         // 3. Control 1ms stream based on market open status
         if (!mStatus.isOpen && !isDemoSimulation.value) {
@@ -872,10 +877,50 @@ class PredictorViewModel @Inject constructor(
         showAutoTradeModal.value = true
         fetchVirtualPortfolio()
         fetchAutoTradeSettings()
+        fetchStrategyConditions(selectedSymbol.value)
     }
 
     fun closeAutoTradeModal() {
         showAutoTradeModal.value = false
+    }
+
+    fun fetchStrategyConditions(symbol: String = selectedSymbol.value) {
+        viewModelScope.launch {
+            isStrategyConditionsLoading.value = true
+            marketRepository.getStrategyConditions(symbol).fold(
+                onSuccess = { list: List<StrategyConditionItem> ->
+                    strategyConditions.value = list
+                    isStrategyConditionsLoading.value = false
+                },
+                onFailure = {
+                    isStrategyConditionsLoading.value = false
+                }
+            )
+        }
+    }
+
+    fun executeStrategyTrade(condition: StrategyConditionItem) {
+        val price = if (condition.entryPrice > 0) condition.entryPrice else condition.currentPrice
+        val qty = if (price > 0) {
+            maxOf(1, (autoTradeSettings.value.maxCapitalPerTrade / price).toInt())
+        } else 25
+        val req = ManualOrderRequest(
+            symbol = condition.symbol,
+            action = condition.action.uppercase(),
+            quantity = qty,
+            price = price,
+            stopLoss = condition.stopLoss,
+            targetPrice = condition.targetPrice,
+            patternTrigger = "[${condition.strategyName}] ${condition.triggerCondition}"
+        )
+        viewModelScope.launch {
+            marketRepository.placeManualOrder(req).fold(
+                onSuccess = {
+                    fetchVirtualPortfolio()
+                },
+                onFailure = { /* handled */ }
+            )
+        }
     }
 
     fun fetchAutoTradeSettings() {

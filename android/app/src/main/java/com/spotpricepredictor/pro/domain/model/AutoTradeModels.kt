@@ -1,25 +1,62 @@
 package com.spotpricepredictor.pro.domain.model
 
-enum class BrokerDestination(val key: String, val label: String) {
-    FRONTPAGE("FRONTPAGE", "FrontPage (frontpage.app)"),
-    IN_APP_PAPER("IN_APP_PAPER", "In-App Pro Virtual Broker"),
-    TRADINGVIEW_WEBHOOK("TRADINGVIEW_WEBHOOK", "TradingView / Custom Webhook"),
-    SENSIBULL_VIRTUAL("SENSIBULL_VIRTUAL", "Sensibull Virtual Sandbox")
+enum class BrokerDestination(val key: String, val label: String, val siteUrl: String = "") {
+    ANVEST_PAPER("ANVEST_PAPER", "Anvest Paper Trading (anvest.in/paper-trading)", "https://anvest.in/paper-trading"),
+    FRONTPAGE("FRONTPAGE", "FrontPage Paper Trading (front.page)", "https://front.page/"),
+    IN_APP_PAPER("IN_APP_PAPER", "In-App Pro Virtual Broker", ""),
+    TRADINGVIEW_WEBHOOK("TRADINGVIEW_WEBHOOK", "TradingView / Custom Webhook", ""),
+    SENSIBULL_VIRTUAL("SENSIBULL_VIRTUAL", "Sensibull Virtual Sandbox", "")
 }
+
+data class StrategyConditionItem(
+    val strategyId: String,
+    val strategyName: String,
+    val symbol: String,
+    val companyName: String,
+    val timeframe: String = "5 MIN",
+    val conditionMet: Boolean = false,
+    val action: String = "WAIT", // "BUY", "SELL", "WAIT"
+    val triggerCondition: String,
+    val currentPrice: Double,
+    val entryPrice: Double,
+    val stopLoss: Double,
+    val targetPrice: Double,
+    val riskReward: String = "1:2",
+    val confidenceScore: Double = 85.0,
+    val executionAdvice: String,
+    val timestamp: String = ""
+)
 
 data class AutoTradeSettings(
     val isAutoTradeEnabled: Boolean = false,
-    val brokerDestination: BrokerDestination = BrokerDestination.FRONTPAGE,
+    val brokerDestination: BrokerDestination = BrokerDestination.ANVEST_PAPER,
+
+    // Anvest Paper Trading (https://anvest.in/paper-trading)
+    val anvestUserToken: String = "",
+    val anvestAccountId: String = "ANVEST_PAPER_01",
+    val anvestWebhookUrl: String = "https://anvest.in/paper-trading",
+
+    // FrontPage Paper Trading (https://front.page/)
     val frontpageUserToken: String = "",
     val frontpageAccountId: String = "FP_VIRTUAL_01",
+    val frontpageWebhookUrl: String = "https://front.page/",
+
     val webhookUrl: String = "",
     val scanIntervalSeconds: Int = 15,
-    val minReliabilityPct: Double = 80.0,
+    val minReliabilityPct: Double = 75.0,
     val allowedActions: String = "ALL", // "ALL", "BUY_ONLY", "SELL_ONLY"
     val maxCapitalPerTrade: Double = 50000.0,
     val maxConcurrentPositions: Int = 5,
     val autoTrailingStopLoss: Boolean = true,
-    val notifyOnExecution: Boolean = true
+    val notifyOnExecution: Boolean = true,
+    val enabledStrategies: List<String> = listOf(
+        "CANDLESTICK_PATTERNS",
+        "INTRADAY_TRI_CONFIRMATION",
+        "GOLDEN_CROSS",
+        "BOLLINGER_BREAKOUT",
+        "CONSOLIDATION_BREAKOUT",
+        "OI_BUILDUP"
+    )
 )
 
 data class AutoTradeOrder(
@@ -81,7 +118,9 @@ data class VirtualPortfolio(
 data class ScanAndExecuteResponse(
     val stocksScannedCount: Int,
     val patternsDetectedCount: Int,
+    val strategyConditionsCount: Int = 0,
     val ordersExecuted: List<AutoTradeOrder> = emptyList(),
+    val strategyConditionsEvaluated: List<StrategyConditionItem> = emptyList(),
     val portfolio: VirtualPortfolio,
     val summary: String,
     val timestamp: String

@@ -3,18 +3,20 @@ from typing import List, Dict, Any, Optional
 
 from app.models.schemas import (
     ScanAndExecuteResponse, AutoTradeOrder,
-    PatternDetectionItem, VirtualPortfolio
+    PatternDetectionItem, StrategyConditionItem, VirtualPortfolio
 )
 from app.services.pattern_recognition_service import PatternRecognitionService
+from app.services.strategy_condition_service import StrategyConditionService
 from app.services.frontpage_trading_service import FrontPageTradingService
 from app.services.market_data_fetcher import MarketDataFetcher
 
 class AutoTradeScannerService:
     """
-    Automated Multi-Stock Scanner & Execution Service.
-    Scans entire universe of Indian indices and equities for high-conviction
-    candlestick patterns & price action techniques, and automatically places
-    BUY/SELL orders on FrontPage or the virtual demo broker.
+    Automated Multi-Stock & Multi-Strategy Scanner & Execution Service.
+    Scans entire universe of Indian indices and equities for strategy conditions
+    (5M Tri-Confirmation, Golden Cross, Bollinger Bands, Consolidation Breakout,
+    OI Buildup, and Candlestick patterns) and automatically places BUY/SELL orders
+    on Anvest Paper Trading (anvest.in/paper-trading) or FrontPage (front.page).
     """
 
     SCAN_UNIVERSE = [
@@ -46,8 +48,8 @@ class AutoTradeScannerService:
         ("HAL", "Hindustan Aeronautics Ltd")
     ]
 
-    # Track recently executed pattern IDs to avoid duplicate execution within the same cycle
-    _RECENTLY_EXECUTED_PATTERNS = set()
+    # Track recently executed pattern/strategy IDs to avoid duplicate execution within same session
+    _RECENTLY_EXECUTED_TRIGGERS = set()
 
     @classmethod
     def scan_and_execute(
@@ -56,7 +58,8 @@ class AutoTradeScannerService:
         custom_symbols: Optional[List[str]] = None
     ) -> ScanAndExecuteResponse:
         """
-        Scans all universe stocks, detects patterns, and executes orders for qualifying patterns.
+        Scans universe stocks, evaluates all strategy conditions, and executes orders
+        when strategy rules are confirmed and met.
         """
         settings = FrontPageTradingService.get_settings()
         now_ist = datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%d-%b-%Y, %I:%M:%S %p IST")
@@ -68,55 +71,79 @@ class AutoTradeScannerService:
             target_list = cls.SCAN_UNIVERSE
 
         all_detected_patterns: List[PatternDetectionItem] = []
+        all_strategy_conditions: List[StrategyConditionItem] = []
         orders_executed: List[AutoTradeOrder] = []
 
-        # 1. Scan all symbols
+        # 1. Scan and evaluate strategies for all target symbols
         for sym, name in target_list:
+            # Candlestick patterns
             patterns = PatternRecognitionService._scan_for_single_symbol(sym)
             all_detected_patterns.extend(patterns)
 
-        # 2. If auto-trading is enabled OR force_execute is requested, evaluate and place orders
+            # Full Strategy Conditions (5M Tri-Confirmation, Golden Cross, Bollinger, Consolidation, OI)
+            conditions = StrategyConditionService.evaluate_strategies_for_symbol(sym, name)
+            all_strategy_conditions.extend(conditions)
+
+        # 2. If auto-trading is enabled OR force_execute is requested, evaluate conditions and place orders
         should_execute = settings.is_auto_trade_enabled or force_execute
 
         if should_execute:
             current_portfolio = FrontPageTradingService.get_portfolio()
             open_symbols_actions = {(p.symbol, p.action) for p in current_portfolio.positions if p.status == "OPEN"}
 
-            for pat in all_detected_patterns:
-                # Reliability check
-                if pat.reliability_pct < settings.min_reliability_pct:
+            # Strategy conditions that are confirmed and met
+            qualifying_conditions = [
+                c for c in all_strategy_conditions
+                if c.condition_met
+                and c.action in ["BUY", "SELL"]
+                and c.confidence_score >= settings.min_reliability_pct
+            ]
+
+            for cond in qualifying_conditions:
+                # Strategy category filtering
+                strat_type = "CANDLESTICK_PATTERNS" if "Candlestick" in cond.strategy_name else (
+                    "INTRADAY_TRI_CONFIRMATION" if "Tri-Confirmation" in cond.strategy_name else (
+                        "GOLDEN_CROSS" if "Golden Cross" in cond.strategy_name else (
+                            "BOLLINGER_BREAKOUT" if "Bollinger" in cond.strategy_name else (
+                                "CONSOLIDATION_BREAKOUT" if "Consolidation" in cond.strategy_name else "OI_BUILDUP"
+                            )
+                        )
+                    )
+                )
+
+                if settings.enabled_strategies and strat_type not in settings.enabled_strategies:
                     continue
 
                 # Action direction filter
-                if settings.allowed_actions == "BUY_ONLY" and pat.pattern_type != "BUY":
+                if settings.allowed_actions == "BUY_ONLY" and cond.action != "BUY":
                     continue
-                if settings.allowed_actions == "SELL_ONLY" and pat.pattern_type != "SELL":
+                if settings.allowed_actions == "SELL_ONLY" and cond.action != "SELL":
                     continue
 
                 # Prevent duplicate entry in the same stock in the same direction
-                if (pat.symbol, pat.pattern_type) in open_symbols_actions:
+                if (cond.symbol, cond.action) in open_symbols_actions:
                     continue
 
-                # Prevent immediate re-trigger of identical pattern ID in same session
-                if pat.pattern_id in cls._RECENTLY_EXECUTED_PATTERNS:
+                # Prevent immediate re-trigger of identical trigger ID in same session
+                if cond.strategy_id in cls._RECENTLY_EXECUTED_TRIGGERS:
                     continue
 
-                # Place order on FrontPage / Demo broker
+                # Execute order on Anvest Paper Trading (anvest.in) or FrontPage (front.page)
                 order = FrontPageTradingService.execute_order(
-                    symbol=pat.symbol,
-                    action=pat.pattern_type,
-                    price=pat.current_price,
-                    stop_loss=pat.stop_loss,
-                    target_price=pat.target1,
-                    pattern_trigger=f"{pat.pattern_name} ({pat.reliability_pct:.0f}% Conf)",
+                    symbol=cond.symbol,
+                    action=cond.action,
+                    price=cond.current_price,
+                    stop_loss=cond.stop_loss,
+                    target_price=cond.target_price,
+                    pattern_trigger=f"[{cond.strategy_name}] {cond.trigger_condition}",
                     product_type="INTRADAY",
-                    company_name=pat.company_name
+                    company_name=cond.company_name
                 )
 
                 if order.status == "EXECUTED":
                     orders_executed.append(order)
-                    cls._RECENTLY_EXECUTED_PATTERNS.add(pat.pattern_id)
-                    open_symbols_actions.add((pat.symbol, pat.pattern_type))
+                    cls._RECENTLY_EXECUTED_TRIGGERS.add(cond.strategy_id)
+                    open_symbols_actions.add((cond.symbol, cond.action))
 
                     # Limit max new orders in a single scan cycle to 4
                     if len(orders_executed) >= 4:
@@ -124,28 +151,31 @@ class AutoTradeScannerService:
 
         # Refresh portfolio
         updated_portfolio = FrontPageTradingService.get_portfolio()
+        met_count = len([c for c in all_strategy_conditions if c.condition_met])
 
         if len(orders_executed) > 0:
             summary = (
-                f"Scanned {len(target_list)} stocks: Discovered {len(all_detected_patterns)} patterns. "
+                f"Scanned {len(target_list)} stocks: Evaluated {len(all_strategy_conditions)} strategy setups ({met_count} conditions met). "
                 f"Auto-executed {len(orders_executed)} orders on {updated_portfolio.broker_name} "
                 f"({', '.join([o.symbol + ' ' + o.action for o in orders_executed])})."
             )
         elif should_execute:
             summary = (
-                f"Scanned {len(target_list)} stocks: Discovered {len(all_detected_patterns)} patterns. "
+                f"Scanned {len(target_list)} stocks: Evaluated {len(all_strategy_conditions)} strategy setups ({met_count} conditions met). "
                 f"No new orders met risk limits (Max concurrent positions: {settings.max_concurrent_positions})."
             )
         else:
             summary = (
-                f"Scanned {len(target_list)} stocks: Discovered {len(all_detected_patterns)} confirmed patterns. "
-                f"Auto-trade engine is currently in STANDBY mode."
+                f"Scanned {len(target_list)} stocks: Evaluated {len(all_strategy_conditions)} strategy setups ({met_count} conditions met). "
+                f"Auto-paper trade engine is in STANDBY mode."
             )
 
         return ScanAndExecuteResponse(
             stocks_scanned_count=len(target_list),
             patterns_detected_count=len(all_detected_patterns),
+            strategy_conditions_count=met_count,
             orders_executed=orders_executed,
+            strategy_conditions_evaluated=all_strategy_conditions,
             portfolio=updated_portfolio,
             summary=summary,
             timestamp=now_ist

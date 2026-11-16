@@ -28,6 +28,7 @@ import com.spotpricepredictor.pro.data.api.models.ScanAndExecuteResponseDto
 import com.spotpricepredictor.pro.data.api.models.ManualOrderRequestDto
 import com.spotpricepredictor.pro.data.api.models.SquareOffRequestDto
 import com.spotpricepredictor.pro.data.api.models.BrokerTestResponseDto
+import com.spotpricepredictor.pro.data.api.models.StrategyConditionItemDto
 
 interface PredictorApiService {
 
@@ -136,6 +137,11 @@ interface PredictorApiService {
 
     @POST("api/v1/auto-trade/test-broker")
     suspend fun testBrokerConnection(): Response<BrokerTestResponseDto>
+
+    @GET("api/v1/auto-trade/strategy-conditions")
+    suspend fun getStrategyConditions(
+        @Query("symbol") symbol: String = "NIFTY"
+    ): Response<List<StrategyConditionItemDto>>
 }
 
 

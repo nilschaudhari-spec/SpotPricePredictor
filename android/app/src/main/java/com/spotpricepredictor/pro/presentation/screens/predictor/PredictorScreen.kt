@@ -130,6 +130,8 @@ fun PredictorScreen(
     val isAutoTradeScanning by viewModel.isAutoTradeScanning.collectAsState()
     val showAutoTradeModal by viewModel.showAutoTradeModal.collectAsState()
     val brokerTestMessage by viewModel.brokerTestMessage.collectAsState()
+    val strategyConditions by viewModel.strategyConditions.collectAsState()
+    val isStrategyConditionsLoading by viewModel.isStrategyConditionsLoading.collectAsState()
 
     val showChartModal by viewModel.showChartModal.collectAsState()
     val chartData by viewModel.chartData.collectAsState()
@@ -308,6 +310,7 @@ fun PredictorScreen(
         AutoTradeHubDialog(
             settings = autoTradeSettings,
             portfolio = virtualPortfolio ?: com.spotpricepredictor.pro.domain.model.VirtualPortfolio(),
+            strategyConditions = strategyConditions,
             isScanning = isAutoTradeScanning,
             onToggleAutoTrade = { isEnabled ->
                 viewModel.updateAutoTradeSettings(autoTradeSettings.copy(isAutoTradeEnabled = isEnabled))
@@ -327,6 +330,9 @@ fun PredictorScreen(
             },
             onTestBroker = {
                 viewModel.testBrokerConnection()
+            },
+            onExecuteStrategy = { condition ->
+                viewModel.executeStrategyTrade(condition)
             },
             brokerTestMessage = brokerTestMessage,
             onDismiss = { viewModel.closeAutoTradeModal() }
@@ -1260,7 +1266,7 @@ fun PredictorScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(
-                                    text = "🤖 Auto-Trading Engine",
+                                    text = "🤖 Auto Paper Trading (Anvest & FrontPage)",
                                     fontSize = 11.5.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = ElectricCyan
@@ -1308,8 +1314,9 @@ fun PredictorScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = if (isPnlPos) NeonEmerald else CrimsonAlert
                             )
+                            val activeConditions = strategyConditions.count { it.conditionMet }
                             Text(
-                                text = "FrontPage & In-App Demo • Auto-executes on pattern triggers",
+                                text = "anvest.in & front.page • $activeConditions Strategy Triggers Active",
                                 fontSize = 8.sp,
                                 color = TextSecondary
                             )

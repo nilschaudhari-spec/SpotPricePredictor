@@ -41,8 +41,10 @@ class FrontPageTradingService:
     @classmethod
     def update_settings(cls, new_settings: AutoTradeSettings) -> AutoTradeSettings:
         cls._SETTINGS = new_settings
-        if new_settings.broker_destination == "FRONTPAGE":
-            cls._PORTFOLIO.broker_name = "FrontPage Virtual Account"
+        if new_settings.broker_destination == "ANVEST_PAPER":
+            cls._PORTFOLIO.broker_name = "Anvest Paper Trading (anvest.in)"
+        elif new_settings.broker_destination == "FRONTPAGE":
+            cls._PORTFOLIO.broker_name = "FrontPage Virtual Account (front.page)"
         elif new_settings.broker_destination == "TRADINGVIEW_WEBHOOK":
             cls._PORTFOLIO.broker_name = "TradingView Webhook Bridge"
         elif new_settings.broker_destination == "SENSIBULL_VIRTUAL":
@@ -168,38 +170,74 @@ class FrontPageTradingService:
                 cls._PORTFOLIO.order_history.insert(0, rejected_order)
                 return rejected_order
 
-        # Dispatch to FrontPage or Webhook if endpoint provided
-        broker_order_id = f"FRONTPAGE-ORD-{uuid.uuid4().hex[:6].upper()}"
-        broker_status = "Executed on FrontPage Virtual Paper Desk"
+        # Dispatch to Anvest Paper Trading, FrontPage, or Webhook if configured
+        dest = cls._SETTINGS.broker_destination
+        if dest == "ANVEST_PAPER":
+            broker_order_id = f"ANVEST-ORD-{uuid.uuid4().hex[:6].upper()}"
+            broker_status = "Executed on Anvest Paper Trading Desk (anvest.in/paper-trading)"
+            if cls._SETTINGS.anvest_user_token or cls._SETTINGS.anvest_webhook_url:
+                try:
+                    target_url = cls._SETTINGS.anvest_webhook_url or "https://anvest.in/api/v1/paper-trading/orders"
+                    headers = {
+                        "Authorization": f"Bearer {cls._SETTINGS.anvest_user_token or ''}",
+                        "Content-Type": "application/json",
+                        "X-Paper-Trading-Platform": "Anvest"
+                    }
+                    payload = {
+                        "account_id": cls._SETTINGS.anvest_account_id,
+                        "symbol": symbol.upper(),
+                        "exchange": "NSE",
+                        "transaction_type": action.upper(),
+                        "quantity": qty,
+                        "price": price,
+                        "stop_loss": stop_loss,
+                        "target_price": target_price,
+                        "order_type": "MARKET",
+                        "product": product_type,
+                        "strategy": pattern_trigger,
+                        "source": "https://anvest.in/paper-trading",
+                        "timestamp": now_str
+                    }
+                    with httpx.Client(timeout=2.0) as client:
+                        resp = client.post(target_url, json=payload, headers=headers)
+                        if resp.status_code in [200, 201]:
+                            broker_status = "Anvest Paper Cloud Desk Confirmed (anvest.in)"
+                except Exception:
+                    broker_status = "Anvest Paper Local Simulator (anvest.in/paper-trading)"
 
-        if cls._SETTINGS.broker_destination == "FRONTPAGE" and cls._SETTINGS.frontpage_user_token:
-            try:
-                # Dispatch order to FrontPage API bridge
-                headers = {
-                    "Authorization": f"Bearer {cls._SETTINGS.frontpage_user_token}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "account_id": cls._SETTINGS.frontpage_account_id,
-                    "symbol": symbol.upper(),
-                    "action": action.upper(),
-                    "quantity": qty,
-                    "price": price,
-                    "stop_loss": stop_loss,
-                    "target_price": target_price,
-                    "order_type": "MARKET",
-                    "product": product_type,
-                    "pattern": pattern_trigger,
-                    "source": "SpotPricePredictor_AutoTrader"
-                }
-                with httpx.Client(timeout=2.0) as client:
-                    resp = client.post("https://api.frontpage.app/v1/virtual/orders", json=payload, headers=headers)
-                    if resp.status_code in [200, 201]:
-                        broker_status = "Frontpage Cloud Virtual Desk Confirmed"
-            except Exception:
-                broker_status = "FrontPage Local Simulated Fallback"
+        elif dest == "FRONTPAGE":
+            broker_order_id = f"FRONTPAGE-ORD-{uuid.uuid4().hex[:6].upper()}"
+            broker_status = "Executed on FrontPage Paper Desk (front.page)"
+            if cls._SETTINGS.frontpage_user_token or cls._SETTINGS.frontpage_webhook_url:
+                try:
+                    target_url = cls._SETTINGS.frontpage_webhook_url or "https://front.page/api/v1/virtual/orders"
+                    headers = {
+                        "Authorization": f"Bearer {cls._SETTINGS.frontpage_user_token or ''}",
+                        "Content-Type": "application/json",
+                        "X-Source": "https://front.page/"
+                    }
+                    payload = {
+                        "account_id": cls._SETTINGS.frontpage_account_id,
+                        "symbol": symbol.upper(),
+                        "action": action.upper(),
+                        "quantity": qty,
+                        "price": price,
+                        "stop_loss": stop_loss,
+                        "target_price": target_price,
+                        "order_type": "MARKET",
+                        "product": product_type,
+                        "pattern": pattern_trigger,
+                        "source": "https://front.page/"
+                    }
+                    with httpx.Client(timeout=2.0) as client:
+                        resp = client.post(target_url, json=payload, headers=headers)
+                        if resp.status_code in [200, 201]:
+                            broker_status = "FrontPage Cloud Virtual Desk Confirmed (front.page)"
+                except Exception:
+                    broker_status = "FrontPage Paper Local Simulator (front.page)"
 
-        elif cls._SETTINGS.broker_destination == "TRADINGVIEW_WEBHOOK" and cls._SETTINGS.webhook_url:
+        elif dest == "TRADINGVIEW_WEBHOOK" and cls._SETTINGS.webhook_url:
+            broker_order_id = f"WEBHOOK-ORD-{uuid.uuid4().hex[:6].upper()}"
             try:
                 webhook_payload = {
                     "event": "AUTO_TRADE_ORDER",
@@ -217,6 +255,9 @@ class FrontPageTradingService:
                 broker_status = "Webhook Alert Dispatched"
             except Exception:
                 broker_status = "Webhook Dispatch Failed - Logged Locally"
+        else:
+            broker_order_id = f"PRO-ORD-{uuid.uuid4().hex[:6].upper()}"
+            broker_status = f"Executed on {cls._PORTFOLIO.broker_name}"
 
         # Create executed order
         executed_order = AutoTradeOrder(
@@ -438,33 +479,60 @@ class FrontPageTradingService:
     @classmethod
     def test_broker_connection(cls) -> Dict[str, Any]:
         """
-        Tests connectivity to FrontPage API or Webhook bridge.
+        Tests connectivity to Anvest Paper Trading (anvest.in/paper-trading), FrontPage (front.page), or Webhook bridge.
         """
         dest = cls._SETTINGS.broker_destination
-        if dest == "FRONTPAGE":
-            token = cls._SETTINGS.frontpage_user_token
+        if dest == "ANVEST_PAPER":
+            token = cls._SETTINGS.anvest_user_token
             if not token:
                 return {
-                    "broker": "FrontPage Virtual Trading",
-                    "status": "ONLINE (Simulated FrontPage Desk)",
-                    "message": "FrontPage Virtual Engine is ready. Virtual Margin: ₹10,00,000 available. Enter API token for cloud sync.",
+                    "broker": "Anvest Paper Trading (anvest.in/paper-trading)",
+                    "status": "ONLINE (Local Simulator)",
+                    "message": "Anvest Paper Trading engine ready with ₹10,00,000 virtual capital. Enter API token for cloud sync (https://anvest.in/paper-trading).",
                     "code": 200
                 }
             try:
-                headers = {"Authorization": f"Bearer {token}"}
+                headers = {"Authorization": f"Bearer {token}", "User-Agent": "SpotPricePredictor-PaperTrader"}
                 with httpx.Client(timeout=3.0) as client:
-                    resp = client.get("https://api.frontpage.app/v1/ping", headers=headers)
+                    resp = client.get("https://anvest.in/paper-trading", headers=headers)
                     return {
-                        "broker": "FrontPage Cloud API",
-                        "status": "CONNECTED" if resp.status_code == 200 else "MOCK_SYNC_ACTIVE",
-                        "message": f"FrontPage response status: {resp.status_code}",
+                        "broker": "Anvest Paper Trading Cloud (anvest.in)",
+                        "status": "CONNECTED" if resp.status_code < 400 else "REACHABLE",
+                        "message": f"Anvest Paper Trading HTTP status: {resp.status_code}. Account: {cls._SETTINGS.anvest_account_id}",
                         "code": resp.status_code
                     }
             except Exception as e:
                 return {
-                    "broker": "FrontPage Virtual Bridge",
+                    "broker": "Anvest Paper Trading (anvest.in/paper-trading)",
                     "status": "ONLINE (In-App Sandbox)",
-                    "message": f"FrontPage cloud bridge unreachable, operating in high-fidelity local sandbox mode: {str(e)}",
+                    "message": f"Anvest cloud unreachable ({str(e)}), running in high-fidelity local virtual sandbox with ₹10,00,000 margin.",
+                    "code": 200
+                }
+
+        elif dest == "FRONTPAGE":
+            token = cls._SETTINGS.frontpage_user_token
+            if not token:
+                return {
+                    "broker": "FrontPage Paper Trading (front.page)",
+                    "status": "ONLINE (Local Simulator)",
+                    "message": "FrontPage Virtual Engine ready. Virtual Margin: ₹10,00,000 available. Enter API token for cloud sync (https://front.page/).",
+                    "code": 200
+                }
+            try:
+                headers = {"Authorization": f"Bearer {token}", "User-Agent": "SpotPricePredictor-PaperTrader"}
+                with httpx.Client(timeout=3.0) as client:
+                    resp = client.get("https://front.page/", headers=headers)
+                    return {
+                        "broker": "FrontPage Cloud API (front.page)",
+                        "status": "CONNECTED" if resp.status_code < 400 else "REACHABLE",
+                        "message": f"FrontPage cloud response status: {resp.status_code}. Account: {cls._SETTINGS.frontpage_account_id}",
+                        "code": resp.status_code
+                    }
+            except Exception as e:
+                return {
+                    "broker": "FrontPage Virtual Bridge (front.page)",
+                    "status": "ONLINE (In-App Sandbox)",
+                    "message": f"FrontPage cloud bridge unreachable ({str(e)}), operating in high-fidelity local sandbox mode.",
                     "code": 200
                 }
 

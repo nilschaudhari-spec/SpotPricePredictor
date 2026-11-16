@@ -11,6 +11,7 @@ import com.spotpricepredictor.pro.domain.model.AutoTradeOrder
 import com.spotpricepredictor.pro.domain.model.VirtualPortfolio
 import com.spotpricepredictor.pro.domain.model.ScanAndExecuteResponse
 import com.spotpricepredictor.pro.domain.model.ManualOrderRequest
+import com.spotpricepredictor.pro.domain.model.StrategyConditionItem
 import kotlinx.coroutines.flow.Flow
 
 interface MarketRepository {
@@ -101,5 +102,7 @@ interface MarketRepository {
     suspend fun squareOffPositions(positionId: String? = null): Result<VirtualPortfolio>
 
     suspend fun testBrokerConnection(): Result<String>
+
+    suspend fun getStrategyConditions(symbol: String = "NIFTY"): Result<List<StrategyConditionItem>>
 }
 

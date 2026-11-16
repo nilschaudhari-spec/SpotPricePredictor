@@ -110,3 +110,86 @@ def test_broker_connection_test():
     assert "broker" in data
     assert "status" in data
     assert "message" in data
+
+def test_anvest_paper_trading_settings_and_execution():
+    # Configure Anvest Paper Trading
+    payload = {
+        "is_auto_trade_enabled": True,
+        "broker_destination": "ANVEST_PAPER",
+        "anvest_user_token": "anvest_token_secret_123",
+        "anvest_account_id": "ANVEST_PAPER_01",
+        "anvest_webhook_url": "https://anvest.in/paper-trading",
+        "frontpage_user_token": "",
+        "frontpage_account_id": "FP_VIRTUAL_01",
+        "frontpage_webhook_url": "https://front.page/",
+        "webhook_url": "",
+        "scan_interval_seconds": 15,
+        "min_reliability_pct": 75.0,
+        "allowed_actions": "ALL",
+        "max_capital_per_trade": 50000.0,
+        "max_concurrent_positions": 5,
+        "auto_trailing_stop_loss": True,
+        "notify_on_execution": True,
+        "enabled_strategies": [
+            "INTRADAY_TRI_CONFIRMATION",
+            "GOLDEN_CROSS",
+            "BOLLINGER_BREAKOUT",
+            "CONSOLIDATION_BREAKOUT",
+            "OI_BUILDUP",
+            "CANDLESTICK_PATTERNS"
+        ]
+    }
+    response = client.post("/api/v1/auto-trade/settings", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["broker_destination"] == "ANVEST_PAPER"
+    assert data["anvest_account_id"] == "ANVEST_PAPER_01"
+    assert "INTRADAY_TRI_CONFIRMATION" in data["enabled_strategies"]
+
+    # Place order on Anvest paper trading desk
+    order_req = {
+        "symbol": "INFY",
+        "action": "BUY",
+        "quantity": 30,
+        "product_type": "INTRADAY",
+        "price": 1025.0,
+        "stop_loss": 1010.0,
+        "target_price": 1055.0,
+        "pattern_trigger": "5M Tri-Confirmation (Supertrend Bullish + VWAP + MACD)"
+    }
+    order_resp = client.post("/api/v1/auto-trade/order", json=order_req)
+    assert order_resp.status_code == 200
+    order_data = order_resp.json()
+    assert order_data["symbol"] == "INFY"
+    assert order_data["status"] == "EXECUTED"
+    assert "Anvest" in order_data["broker"] or "Anvest" in order_data["execution_message"]
+
+def test_strategy_conditions_evaluation():
+    response = client.get("/api/v1/auto-trade/strategy-conditions?symbol=NIFTY")
+    assert response.status_code == 200
+    conditions = response.json()
+    assert isinstance(conditions, list)
+    assert len(conditions) >= 5
+
+    strategy_names = [c["strategy_name"] for c in conditions]
+    assert any("Tri-Confirmation" in s for s in strategy_names)
+    assert any("Golden Cross" in s for s in strategy_names)
+    assert any("Bollinger" in s for s in strategy_names)
+
+    # Check condition structure
+    first = conditions[0]
+    assert "condition_met" in first
+    assert "action" in first
+    assert "entry_price" in first
+    assert "stop_loss" in first
+    assert "target_price" in first
+    assert "confidence_score" in first
+
+def test_strategy_condition_scan_and_execute():
+    response = client.post("/api/v1/auto-trade/scan-and-execute?force_execute=true")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["stocks_scanned_count"] >= 20
+    assert "strategy_conditions_count" in data
+    assert "strategy_conditions_evaluated" in data
+    assert len(data["strategy_conditions_evaluated"]) > 0

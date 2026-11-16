@@ -3,13 +3,15 @@ from typing import Optional, List, Dict, Any
 
 from app.models.schemas import (
     AutoTradeSettings, AutoTradeOrder, VirtualPortfolio,
-    ScanAndExecuteResponse, ManualOrderRequest, SquareOffRequest
+    ScanAndExecuteResponse, ManualOrderRequest, SquareOffRequest,
+    StrategyConditionItem
 )
 from app.services.frontpage_trading_service import FrontPageTradingService
 from app.services.auto_trade_scanner_service import AutoTradeScannerService
+from app.services.strategy_condition_service import StrategyConditionService
 from app.services.market_data_fetcher import MarketDataFetcher
 
-router = APIRouter(prefix="/auto-trade", tags=["FrontPage & Demo Automated Trading"])
+router = APIRouter(prefix="/auto-trade", tags=["Anvest & FrontPage Automated Paper Trading"])
 
 @router.get("/settings", response_model=AutoTradeSettings)
 async def get_auto_trade_settings() -> AutoTradeSettings:
@@ -97,6 +99,26 @@ async def square_off_positions(req: SquareOffRequest = Body(...)) -> VirtualPort
 @router.post("/test-broker")
 async def test_broker_connection() -> Dict[str, Any]:
     """
-    Tests connectivity to FrontPage API or the configured Webhook endpoint.
+    Tests connectivity to Anvest Paper Trading (anvest.in), FrontPage (front.page), or Webhook endpoint.
     """
     return FrontPageTradingService.test_broker_connection()
+
+@router.get("/strategy-conditions", response_model=List[StrategyConditionItem])
+async def get_strategy_conditions(
+    symbol: str = Query("NIFTY", description="Stock or Index symbol")
+) -> List[StrategyConditionItem]:
+    """
+    Evaluates all strategy conditions for a specific stock/index:
+    - 5M Intraday Tri-Confirmation (ST + VWAP + MACD)
+    - Golden Cross 50/200 EMA & Pullback Re-entry
+    - Bollinger Bands Breakout
+    - Price Action Consolidation Box Breakout
+    - Open Interest (OI) Institutional Buildup
+    - Candlestick & Price Action Formations
+    """
+    try:
+        quote = MarketDataFetcher.get_realtime_quote(symbol)
+        co_name = quote.get("company_name", f"{symbol.upper()} Ltd")
+        return StrategyConditionService.evaluate_strategies_for_symbol(symbol, co_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to evaluate strategy conditions: {str(e)}")

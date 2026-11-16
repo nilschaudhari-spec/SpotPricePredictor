@@ -8,16 +8,102 @@ import org.junit.Test
 class AutoTradeTest {
 
     @Test
-    fun `auto trade settings initialize with frontpage destination and safe risk limits`() {
+    fun `auto trade settings initialize with anvest paper destination and safe risk limits`() {
         val settings = AutoTradeSettings()
 
         assertFalse(settings.isAutoTradeEnabled)
-        assertEquals(BrokerDestination.FRONTPAGE, settings.brokerDestination)
+        assertEquals(BrokerDestination.ANVEST_PAPER, settings.brokerDestination)
+        assertEquals("ANVEST_PAPER_01", settings.anvestAccountId)
+        assertEquals("https://anvest.in/paper-trading", settings.anvestWebhookUrl)
         assertEquals("FP_VIRTUAL_01", settings.frontpageAccountId)
+        assertEquals("https://front.page/", settings.frontpageWebhookUrl)
         assertEquals(50000.0, settings.maxCapitalPerTrade, 0.01)
         assertEquals(5, settings.maxConcurrentPositions)
-        assertEquals(80.0, settings.minReliabilityPct, 0.01)
+        assertEquals(75.0, settings.minReliabilityPct, 0.01)
         assertTrue(settings.autoTrailingStopLoss)
+        assertTrue(settings.enabledStrategies.contains("INTRADAY_TRI_CONFIRMATION"))
+        assertTrue(settings.enabledStrategies.contains("GOLDEN_CROSS"))
+        assertTrue(settings.enabledStrategies.contains("BOLLINGER_BREAKOUT"))
+        assertTrue(settings.enabledStrategies.contains("CONSOLIDATION_BREAKOUT"))
+        assertTrue(settings.enabledStrategies.contains("OI_BUILDUP"))
+        assertTrue(settings.enabledStrategies.contains("CANDLESTICK_PATTERNS"))
+    }
+
+    @Test
+    fun `broker destinations verify anvest and frontpage portal configurations`() {
+        assertEquals("https://anvest.in/paper-trading", BrokerDestination.ANVEST_PAPER.siteUrl)
+        assertEquals("https://front.page/", BrokerDestination.FRONTPAGE.siteUrl)
+        assertEquals("Anvest Paper Trading (anvest.in/paper-trading)", BrokerDestination.ANVEST_PAPER.label)
+        assertEquals("FrontPage Paper Trading (front.page)", BrokerDestination.FRONTPAGE.label)
+    }
+
+    @Test
+    fun `strategy condition item dto converts to domain model accurately`() {
+        val dto = StrategyConditionItemDto(
+            strategyId = "INTRADAY_TRI_CONFIRMATION",
+            strategyName = "5-Min Intraday Tri-Confirmation",
+            symbol = "NIFTY",
+            companyName = "NIFTY 50 Index",
+            timeframe = "5 MIN",
+            conditionMet = true,
+            action = "BUY",
+            triggerCondition = "Supertrend GREEN + Price > VWAP + MACD Bullish Crossover",
+            currentPrice = 24150.0,
+            entryPrice = 24155.0,
+            stopLoss = 24100.0,
+            targetPrice = 24210.0,
+            riskReward = "1:1",
+            confidenceScore = 91.5,
+            executionAdvice = "High probability intraday trend continuation",
+            timestamp = "10:30:00"
+        )
+
+        val domain = dto.toDomain()
+
+        assertEquals("INTRADAY_TRI_CONFIRMATION", domain.strategyId)
+        assertEquals("NIFTY", domain.symbol)
+        assertTrue(domain.conditionMet)
+        assertEquals("BUY", domain.action)
+        assertEquals(24150.0, domain.currentPrice, 0.01)
+        assertEquals(24100.0, domain.stopLoss, 0.01)
+        assertEquals(24210.0, domain.targetPrice, 0.01)
+        assertEquals("1:1", domain.riskReward)
+        assertEquals(91.5, domain.confidenceScore, 0.01)
+    }
+
+    @Test
+    fun `auto trade settings dto round trips with full anvest and frontpage configuration`() {
+        val originalSettings = AutoTradeSettings(
+            isAutoTradeEnabled = true,
+            brokerDestination = BrokerDestination.ANVEST_PAPER,
+            anvestUserToken = "jwt_token_anvest_abc123",
+            anvestAccountId = "ANVEST_PAPER_99",
+            anvestWebhookUrl = "https://anvest.in/paper-trading/webhook",
+            frontpageUserToken = "jwt_token_fp_xyz789",
+            frontpageAccountId = "FP_VIRTUAL_88",
+            frontpageWebhookUrl = "https://front.page/webhook",
+            scanIntervalSeconds = 30,
+            minReliabilityPct = 80.0,
+            allowedActions = "BUY_ONLY",
+            maxCapitalPerTrade = 75000.0,
+            maxConcurrentPositions = 4,
+            autoTrailingStopLoss = true,
+            notifyOnExecution = true,
+            enabledStrategies = listOf("GOLDEN_CROSS", "BOLLINGER_BREAKOUT")
+        )
+
+        val dto = originalSettings.toDto()
+        val mapped = dto.toDomain()
+
+        assertTrue(mapped.isAutoTradeEnabled)
+        assertEquals(BrokerDestination.ANVEST_PAPER, mapped.brokerDestination)
+        assertEquals("jwt_token_anvest_abc123", mapped.anvestUserToken)
+        assertEquals("ANVEST_PAPER_99", mapped.anvestAccountId)
+        assertEquals("jwt_token_fp_xyz789", mapped.frontpageUserToken)
+        assertEquals("FP_VIRTUAL_88", mapped.frontpageAccountId)
+        assertEquals(75000.0, mapped.maxCapitalPerTrade, 0.01)
+        assertEquals(4, mapped.maxConcurrentPositions)
+        assertEquals(listOf("GOLDEN_CROSS", "BOLLINGER_BREAKOUT"), mapped.enabledStrategies)
     }
 
     @Test
@@ -47,7 +133,7 @@ class AutoTradeTest {
             pnl = 0.0,
             pnlPercent = 0.0,
             patternTrigger = "Bullish Marubozu (88%)",
-            broker = "FrontPage",
+            broker = "Anvest Paper",
             status = "OPEN",
             entryTime = "10:30:00"
         )
@@ -110,10 +196,10 @@ class AutoTradeTest {
             stopLoss = 23000.0,
             targetPrice = 23300.0,
             status = "EXECUTED",
-            broker = "FrontPage",
-            brokerOrderId = "FP_EXT_7894",
+            broker = "Anvest Paper",
+            brokerOrderId = "ANVEST_EXT_7894",
             timestamp = "2026-11-15T10:30:00",
-            executionMessage = "Auto-executed via FrontPage Virtual Bridge"
+            executionMessage = "Auto-executed via Anvest Paper Trading Desk (anvest.in)"
         )
 
         val dto = originalOrder.toDto()

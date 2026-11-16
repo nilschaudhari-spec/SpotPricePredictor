@@ -567,22 +567,59 @@ class ProStrategiesResponse(BaseModel):
     terminologies: List[OptionTerminologyItem] = []
 
 # =============================================================================
-# FRONTPAGE & DEMO TRADING AUTO-EXECUTION ENGINE SCHEMAS
+# ANVEST & FRONTPAGE PAPER TRADING AUTO-EXECUTION ENGINE SCHEMAS
 # =============================================================================
+
+class StrategyConditionItem(BaseModel):
+    strategy_id: str
+    strategy_name: str
+    symbol: str
+    company_name: str
+    timeframe: str = "5m"
+    condition_met: bool = False
+    action: str = "WAIT"  # "BUY", "SELL", "WAIT"
+    trigger_condition: str
+    current_price: float
+    entry_price: float
+    stop_loss: float
+    target_price: float
+    risk_reward: str = "1:2"
+    confidence_score: float = 85.0
+    execution_advice: str
+    timestamp: str = ""
 
 class AutoTradeSettings(BaseModel):
     is_auto_trade_enabled: bool = False
-    broker_destination: str = "FRONTPAGE"  # "FRONTPAGE", "IN_APP_PAPER", "TRADINGVIEW_WEBHOOK", "SENSIBULL_VIRTUAL"
+    broker_destination: str = "ANVEST_PAPER"  # "ANVEST_PAPER", "FRONTPAGE", "IN_APP_PAPER", "TRADINGVIEW_WEBHOOK", "SENSIBULL_VIRTUAL"
+
+    # Anvest Paper Trading (https://anvest.in/paper-trading)
+    anvest_user_token: Optional[str] = ""
+    anvest_account_id: Optional[str] = "ANVEST_PAPER_01"
+    anvest_webhook_url: Optional[str] = "https://anvest.in/paper-trading"
+
+    # FrontPage Paper Trading (https://front.page/)
     frontpage_user_token: Optional[str] = ""
     frontpage_account_id: Optional[str] = "FP_VIRTUAL_01"
+    frontpage_webhook_url: Optional[str] = "https://front.page/"
+
     webhook_url: Optional[str] = ""
     scan_interval_seconds: int = 15
-    min_reliability_pct: float = 80.0
+    min_reliability_pct: float = 75.0
     allowed_actions: str = "ALL"  # "ALL", "BUY_ONLY", "SELL_ONLY"
     max_capital_per_trade: float = 50000.0
     max_concurrent_positions: int = 5
     auto_trailing_stop_loss: bool = True
     notify_on_execution: bool = True
+
+    # Enabled Strategy Conditions that trigger automated trades
+    enabled_strategies: List[str] = [
+        "CANDLESTICK_PATTERNS",
+        "INTRADAY_TRI_CONFIRMATION",
+        "GOLDEN_CROSS",
+        "BOLLINGER_BREAKOUT",
+        "CONSOLIDATION_BREAKOUT",
+        "OI_BUILDUP"
+    ]
 
 class AutoTradeOrder(BaseModel):
     order_id: str
@@ -640,7 +677,9 @@ class VirtualPortfolio(BaseModel):
 class ScanAndExecuteResponse(BaseModel):
     stocks_scanned_count: int
     patterns_detected_count: int
+    strategy_conditions_count: int = 0
     orders_executed: List[AutoTradeOrder] = []
+    strategy_conditions_evaluated: List[StrategyConditionItem] = []
     portfolio: VirtualPortfolio
     summary: str
     timestamp: str
